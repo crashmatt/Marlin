@@ -3,6 +3,15 @@
  *
  * Test configuration values for errors at compile-time.
  */
+#ifndef CONFIGURATION_H
+#error Configuration header not done first
+#endif
+
+#ifndef CONDITIONALS_H
+#error Conditionals header not done first
+#endif
+
+
 #ifndef SANITYCHECK_H
 #define SANITYCHECK_H
 

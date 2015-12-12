@@ -14,7 +14,7 @@
  *
  */
 
-#define EEPROM_VERSION "V21"
+#define EEPROM_VERSION "V22"
 
 /**
  * V19 EEPROM Layout:
@@ -39,7 +39,7 @@
  *            mesh_num_x (set in firmware)
  *            mesh_num_y (set in firmware)
  *  M421 XYZ  z_values[][]
- *  M851      zprobe_zoffset
+ *  M851      zprobe_offset
  *
  * DELTA:
  *  M666 XYZ  endstop_adj (x3)
@@ -173,9 +173,11 @@ void Config_StoreSettings()  {
   #endif // MESH_BED_LEVELING
 
   #if DISABLED(AUTO_BED_LEVELING_FEATURE)
-    float zprobe_zoffset = 0;
+    float zprobe_offset[3] = {0.0, 0.0, 0.0};
   #endif
-  EEPROM_WRITE_VAR(i, zprobe_zoffset);
+    EEPROM_WRITE_VAR(i, zprobe_offset[0]);
+    EEPROM_WRITE_VAR(i, zprobe_offset[1]);
+    EEPROM_WRITE_VAR(i, zprobe_offset[2]);
 
   #if ENABLED(DELTA)
     EEPROM_WRITE_VAR(i, endstop_adj);               // 3 floats
@@ -346,9 +348,11 @@ void Config_RetrieveSettings() {
     #endif // MESH_BED_LEVELING
 
     #if DISABLED(AUTO_BED_LEVELING_FEATURE)
-      float zprobe_zoffset = 0;
+      float zprobe_offset[3] = {0.0, 0.0, 0.0};
     #endif
-    EEPROM_READ_VAR(i, zprobe_zoffset);
+      EEPROM_READ_VAR(i, zprobe_offset[0]);
+      EEPROM_READ_VAR(i, zprobe_offset[1]);
+      EEPROM_READ_VAR(i, zprobe_offset[2]);
 
     #if ENABLED(DELTA)
       EEPROM_READ_VAR(i, endstop_adj);                // 3 floats
@@ -510,7 +514,7 @@ void Config_ResetDefault() {
   #endif
 
   #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-    zprobe_zoffset = Z_PROBE_OFFSET_FROM_EXTRUDER;
+    zprobe_offset = {X_PROBE_OFFSET_FROM_EXTRUDER, Y_PROBE_OFFSET_FROM_EXTRUDER, Z_PROBE_OFFSET_FROM_EXTRUDER};
   #endif
 
   #if ENABLED(DELTA)
@@ -880,11 +884,15 @@ void Config_PrintSettings(bool forReplay) {
         SERIAL_ECHOLNPGM("Z-Probe Offset (mm):");
       }
       CONFIG_ECHO_START;
-      SERIAL_ECHOPAIR("  M" STRINGIFY(CUSTOM_M_CODE_SET_Z_PROBE_OFFSET) " Z", zprobe_zoffset);
+      SERIAL_ECHOPAIR("  M" STRINGIFY(CUSTOM_M_CODE_SET_Z_PROBE_OFFSET) " Z", zprobe_offset[2]);
+      SERIAL_ECHOPAIR("  M" STRINGIFY(CUSTOM_M_CODE_SET_Z_PROBE_OFFSET) " X", zprobe_offset[0]);
+      SERIAL_ECHOPAIR("  M" STRINGIFY(CUSTOM_M_CODE_SET_Z_PROBE_OFFSET) " Y", zprobe_offset[1]);
     #else
       if (!forReplay) {
         CONFIG_ECHO_START;
-        SERIAL_ECHOPAIR("Z-Probe Offset (mm):", zprobe_zoffset);
+        SERIAL_ECHOPAIR("Z-Probe Offset (mm):", zprobe_offset[2]);
+        SERIAL_ECHOPAIR("X-Probe Offset (mm):", zprobe_offset[0]);
+        SERIAL_ECHOPAIR("Y-Probe Offset (mm):", zprobe_offset[1]);
       }
     #endif
     SERIAL_EOL;

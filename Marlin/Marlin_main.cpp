@@ -293,7 +293,9 @@ bool target_direction;
 
 #if ENABLED(AUTO_BED_LEVELING_FEATURE)
   int xy_travel_speed = XY_TRAVEL_SPEED;
-  float zprobe_zoffset = Z_PROBE_OFFSET_FROM_EXTRUDER;
+  float zprobe_offset[3] = {X_PROBE_OFFSET_FROM_EXTRUDER,
+							Y_PROBE_OFFSET_FROM_EXTRUDER,
+							Z_PROBE_OFFSET_FROM_EXTRUDER};
 #endif
 
 #if ENABLED(Z_DUAL_ENDSTOPS) && DISABLED(DELTA)
@@ -1130,7 +1132,7 @@ static void set_axis_is_at_home(AxisEnum axis) {
     max_pos[axis] = base_max_pos(axis) + home_offset[axis];
 
     #if ENABLED(AUTO_BED_LEVELING_FEATURE) && Z_HOME_DIR < 0
-      if (axis == Z_AXIS) current_position[Z_AXIS] -= zprobe_zoffset;
+      if (axis == Z_AXIS) current_position[Z_AXIS] -= zprobe_offset[2];
     #endif
 
     #if ENABLED(DEBUG_LEVELING_FEATURE)
@@ -1751,7 +1753,7 @@ static void setup_for_endstop_move() {
 
     void raise_z_for_servo() {
       float zpos = current_position[Z_AXIS], z_dest = Z_RAISE_BEFORE_PROBING;
-      z_dest += axis_known_position[Z_AXIS] ? zprobe_zoffset : zpos;
+      z_dest += axis_known_position[Z_AXIS] ? zprobe_offset[2] : zpos;
       if (zpos < z_dest) do_blocking_move_to_z(z_dest); // also updates current_position
     }
 
@@ -2904,7 +2906,7 @@ inline void gcode_G28() {
       #if ENABLED(DELTA)
         delta_grid_spacing[0] = xGridSpacing;
         delta_grid_spacing[1] = yGridSpacing;
-        float z_offset = zprobe_zoffset;
+        float z_offset = zprobe_offset[2];
         if (code_seen(axis_codes[Z_AXIS])) z_offset += code_value();
       #else // !DELTA
         // solve the plane equation ax + by + d = z
@@ -3180,7 +3182,7 @@ inline void gcode_G28() {
           }
         #endif
 
-        current_position[Z_AXIS] = -zprobe_zoffset + (z_tmp - real_z)
+        current_position[Z_AXIS] = -zprobe_offset[2] + (z_tmp - real_z)
           #if HAS_SERVO_ENDSTOPS || ENABLED(Z_PROBE_ALLEN_KEY) || ENABLED(Z_PROBE_SLED)
              + Z_RAISE_AFTER_PROBING
           #endif
@@ -3596,7 +3598,7 @@ inline void gcode_M42() {
     bool deploy_probe_for_each_reading = code_seen('E');
 
     if (code_seen('X')) {
-      X_probe_location = code_value() - X_PROBE_OFFSET_FROM_EXTRUDER;
+      X_probe_location = code_value() - zprobe_offset[0];
       if (X_probe_location < X_MIN_POS || X_probe_location > X_MAX_POS) {
         out_of_range_error(PSTR("X"));
         return;
@@ -3604,7 +3606,7 @@ inline void gcode_M42() {
     }
 
     if (code_seen('Y')) {
-      Y_probe_location = code_value() -  Y_PROBE_OFFSET_FROM_EXTRUDER;
+      Y_probe_location = code_value() -  zprobe_offset[1];
       if (Y_probe_location < Y_MIN_POS || Y_probe_location > Y_MAX_POS) {
         out_of_range_error(PSTR("Y"));
         return;
@@ -5262,7 +5264,7 @@ inline void gcode_M503() {
     if (code_seen('Z')) {
       float value = code_value();
       if (Z_PROBE_OFFSET_RANGE_MIN <= value && value <= Z_PROBE_OFFSET_RANGE_MAX) {
-        zprobe_zoffset = value;
+        zprobe_offset[2] = value;
         SERIAL_ECHOPGM(MSG_OK);
       }
       else {
@@ -5272,8 +5274,18 @@ inline void gcode_M503() {
         SERIAL_ECHO(Z_PROBE_OFFSET_RANGE_MAX);
       }
     }
+    else if (code_seen('X')) {
+      float value = code_value();
+      zprobe_offset[0] = value;
+      SERIAL_ECHOPGM(MSG_OK);
+    }
+    else if (code_seen('Y')) {
+      float value = code_value();
+      zprobe_offset[1] = value;
+      SERIAL_ECHOPGM(MSG_OK);
+    }
     else {
-      SERIAL_ECHOPAIR(": ", zprobe_zoffset);
+      SERIAL_ECHOPAIR(": ", zprobe_offset[2]);
     }
 
     SERIAL_EOL;
@@ -6255,7 +6267,7 @@ void clamp_to_software_endstops(float target[3]) {
 
     float negative_z_offset = 0;
     #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-      if (zprobe_zoffset < 0) negative_z_offset += zprobe_zoffset;
+      if (zprobe_offset[2] < 0) negative_z_offset += zprobe_offset[2];
       if (home_offset[Z_AXIS] < 0) {
         #if ENABLED(DEBUG_LEVELING_FEATURE)
           if (marlin_debug_flags & DEBUG_LEVELING) {
