@@ -1,6 +1,10 @@
 #ifndef CONFIGURATION_ADV_H
 #define CONFIGURATION_ADV_H
 
+#include "Conditionals.h"
+
+// @section temperature
+
 //===========================================================================
 //=============================Thermal Settings  ============================
 //===========================================================================
@@ -36,8 +40,9 @@
   // this adds an experimental additional term to the heating power, proportional to the extrusion speed.
   // if Kc is chosen well, the additional required power due to increased melting should be compensated.
   #define PID_ADD_EXTRUSION_RATE
-  #ifdef PID_ADD_EXTRUSION_RATE
-    #define  DEFAULT_Kc (1) //heating power=Kc*(e_speed)
+  #if ENABLED(PID_ADD_EXTRUSION_RATE)
+    #define DEFAULT_Kc (1) //heating power=Kc*(e_speed)
+    #define LPQ_MAX_LEN 50
   #endif
 #endif
 
