@@ -39,7 +39,9 @@
  *            mesh_num_x (set in firmware)
  *            mesh_num_y (set in firmware)
  *  M421 XYZ  z_values[][]
- *  M851      zprobe_offset
+ *  M851 XYZ  zprobe_offset[X-AXIS]
+ *            zprobe_offset[Y-AXIS]
+ *            zprobe_offset[Z-AXIS]
  *
  * DELTA:
  *  M666 XYZ  endstop_adj (x3)
@@ -514,7 +516,9 @@ void Config_ResetDefault() {
   #endif
 
   #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-    zprobe_offset = {X_PROBE_OFFSET_FROM_EXTRUDER, Y_PROBE_OFFSET_FROM_EXTRUDER, Z_PROBE_OFFSET_FROM_EXTRUDER};
+    zprobe_offset[0] = X_PROBE_OFFSET_FROM_EXTRUDER;
+    zprobe_offset[1] = Y_PROBE_OFFSET_FROM_EXTRUDER;
+    zprobe_offset[2] = Z_PROBE_OFFSET_FROM_EXTRUDER;
   #endif
 
   #if ENABLED(DELTA)
