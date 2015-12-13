@@ -217,7 +217,7 @@
  *
  * ************ Custom codes - This can change to suit future G-code regulations
  * M100 - Watch Free Memory (For Debugging Only)
- * M851 - Set Z probe's Z offset (mm above extruder -- The value will always be negative)
+ * M851 - Set Z probe's XYZ offset (mm from extruder -- Z value will always be negative)
 
 
  * M928 - Start SD logging (M928 filename.g) - ended by M29
@@ -2746,6 +2746,60 @@ inline void gcode_G28() {
   }
 
   /**
+   * G29: Set Z probe head offset
+   *
+   * Parameters With AUTO_BED_LEVELING_GRID:
+   *
+   *  XYZ Offset from probe to extruder
+   *
+   */
+  inline void gcode_G29_1(){
+	bool code_found = false;
+	#if ENABLED(DEBUG_LEVELING_FEATURE)
+	  if (marlin_debug_flags & DEBUG_LEVELING) {
+		SERIAL_ECHOLNPGM("gcode_G29_1 >>>");
+	  }
+	#endif
+
+	if (code_seen('X')){
+	  zprobe_offset[0] = code_value();
+	  code_found = true;
+	  SERIAL_ECHOPGM(MSG_OK);
+	}
+	if (code_seen('Y')){
+	  zprobe_offset[1] = code_value();
+	  code_found = true;
+	  SERIAL_ECHOPGM(MSG_OK);
+	}
+	if (code_seen('Z')){
+	  float value = code_value();
+	  code_found = true;
+	  if (Z_PROBE_OFFSET_RANGE_MIN <= value && value <= Z_PROBE_OFFSET_RANGE_MAX) {
+	    zprobe_offset[2] = value;
+	    SERIAL_ECHOPGM(MSG_OK);
+	  }
+	  else {
+	    SERIAL_ECHOPGM(MSG_Z_MIN);
+	    SERIAL_ECHO(Z_PROBE_OFFSET_RANGE_MIN);
+	    SERIAL_ECHOPGM(MSG_Z_MAX);
+	    SERIAL_ECHO(Z_PROBE_OFFSET_RANGE_MAX);
+	  }
+	}
+
+	if(!code_found){
+	  SERIAL_ECHOPAIR(" X:", zprobe_offset[2]);
+	  SERIAL_ECHOPAIR(" Y:", zprobe_offset[2]);
+	  SERIAL_ECHOPAIR(" Z:", zprobe_offset[2]);
+	}
+
+	#if ENABLED(DEBUG_LEVELING_FEATURE)
+      if (marlin_debug_flags & DEBUG_LEVELING) {
+        SERIAL_ECHOLNPGM("<<< gcode_G29");
+      }
+	#endif
+  }
+
+  /**
    * G29: Detailed Z probe, probes the bed at 3 or more points.
    *      Will fail if the printer has not been homed with G28.
    *
@@ -2784,6 +2838,15 @@ inline void gcode_G28() {
    *
    */
   inline void gcode_G29() {
+	float sub_code;
+    // Interpret the code float
+    seen_pointer = current_command;
+    sub_code = code_value() - 29.0;
+
+    if(sub_code  == 0.1){
+    	gcode_G29_1();
+    	return;
+    }
 
     #if ENABLED(DEBUG_LEVELING_FEATURE)
       if (marlin_debug_flags & DEBUG_LEVELING) {
@@ -2857,7 +2920,7 @@ inline void gcode_G28() {
         if (front_out) {
           out_of_range_error(PSTR("(F)ront"));
           front_probe_bed_position = front_out_f ? MIN_PROBE_Y : back_probe_bed_position - MIN_PROBE_EDGE;
-        }
+         }
         if (back_out) {
           out_of_range_error(PSTR("(B)ack"));
           back_probe_bed_position = back_out_b ? MAX_PROBE_Y : front_probe_bed_position + MIN_PROBE_EDGE;
