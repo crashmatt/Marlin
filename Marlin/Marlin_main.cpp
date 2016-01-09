@@ -92,9 +92,6 @@
  * G11 - retract recover filament according to settings of M208
  * G28 - Home one or more axes
  * G29 - Detailed Z probe, probes the bed at 3 or more points.  Will fail if you haven't homed yet.
- * G30 - Single Z probe, probes bed at current XY location.
- * G31 - Dock sled (Z_PROBE_SLED only)
- * G32 - Undock sled (Z_PROBE_SLED only)
  * G90 - Use Absolute Coordinates
  * G91 - Use Relative Coordinates
  * G92 - Set current position to coordinates given
@@ -5736,31 +5733,6 @@ void process_next_command() {
       case 28: // G28: Home all axes, one at a time
         gcode_G28();
         break;
-
-      #if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
-        case 29: // G29 Detailed Z probe, probes the bed at 3 or more points.
-          gcode_G29();
-          break;
-      #endif
-
-      #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-
-        #if DISABLED(Z_PROBE_SLED)
-
-          case 30: // G30 Single Z probe
-            gcode_G30();
-            break;
-
-        #else // Z_PROBE_SLED
-
-            case 31: // G31: dock the sled
-            case 32: // G32: undock the sled
-              dock_sled(codenum == 31);
-              break;
-
-        #endif // Z_PROBE_SLED
-
-      #endif // AUTO_BED_LEVELING_FEATURE
 
       case 90: // G90
         relative_mode = false;
