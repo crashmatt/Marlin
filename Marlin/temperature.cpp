@@ -1577,6 +1577,7 @@ ISR(TIMER0_COMPB_vect) {
     for (int i = 0; i < 4; i++) raw_temp_value[i] = 0;
     raw_temp_bed_value = 0;
 
+    /*Remove temperature error checks
     #if HAS_TEMP_0 && DISABLED(HEATER_0_USES_MAX6675)
       #if HEATER_0_RAW_LO_TEMP > HEATER_0_RAW_HI_TEMP
         #define GE0 <=
@@ -1626,6 +1627,7 @@ ISR(TIMER0_COMPB_vect) {
       if (current_temperature_bed_raw GEBED bed_maxttemp_raw) _temp_error(-1, PSTR(MSG_T_MAXTEMP), PSTR(MSG_ERR_MAXTEMP_BED));
       if (bed_minttemp_raw GEBED current_temperature_bed_raw) _temp_error(-1, PSTR(MSG_T_MINTEMP), PSTR(MSG_ERR_MINTEMP_BED));
     #endif
+    */
 
   } // temp_count >= OVERSAMPLENR
 
