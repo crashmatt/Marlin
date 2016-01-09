@@ -1309,38 +1309,6 @@ static void homeaxis(AxisEnum axis) {
     endstops_hit_on_purpose(); // clear endstop hit flags
     axis_known_position[axis] = true;
 
-
-    #if SERVO_LEVELING && DISABLED(Z_PROBE_SLED)
-
-      // Deploy a Z probe if there is one, and homing towards the bed
-      if (axis == Z_AXIS) {
-        if (axis_home_dir < 0) {
-          #if ENABLED(DEBUG_LEVELING_FEATURE)
-            if (marlin_debug_flags & DEBUG_LEVELING) {
-              SERIAL_ECHOLNPGM("> SERVO_LEVELING > stow_z_probe");
-            }
-          #endif
-          stow_z_probe();
-        }
-      }
-      else
-
-    #endif
-
-    {
-      #if HAS_SERVO_ENDSTOPS
-        // Retract Servo endstop if enabled
-        if (servo_endstop_id[axis] >= 0) {
-          #if ENABLED(DEBUG_LEVELING_FEATURE)
-            if (marlin_debug_flags & DEBUG_LEVELING) {
-              SERIAL_ECHOLNPGM("> SERVO_ENDSTOPS > Stow with servo.move()");
-            }
-          #endif
-          servo[servo_endstop_id[axis]].move(servo_endstop_angle[axis][1]);
-        }
-      #endif
-    }
-
   }
 
   #if ENABLED(DEBUG_LEVELING_FEATURE)
