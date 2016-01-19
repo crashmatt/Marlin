@@ -317,6 +317,9 @@ Here are some standard links for getting your machine calibrated:
 // Uncomment this option to enable CoreXZ kinematics
 //#define COREXZ
 
+// Uncomment this option to enable dual CoreXY-CoreUV foam cutter
+#define COREUV
+
 // Enable this option for Toshiba steppers
 //#define CONFIG_STEPPERS_TOSHIBA
 
@@ -337,12 +340,13 @@ Here are some standard links for getting your machine calibrated:
 #endif
 // TODO - CHECK THIS
 #ifdef ENDSTOPPULLUPS
-//  #define ENDSTOPPULLUP_XMAX
+//  #define ENDSTOPPULLUP_XMIN
   #define ENDSTOPPULLUP_YMIN
+  #define ENDSTOPPULLUP_ZMIN
+  #define ENDSTOPPULLUP_XMAX
 //  #define ENDSTOPPULLUP_YMAX
-  #define ENDSTOPPULLUP_ZMIN
-  #define ENDSTOPPULLUP_ZMIN
   #define ENDSTOPPULLUP_ZMAX
+  #define ENDSTOPPULLUP_ZMIN_PROBE
 #endif
 
 // Mechanical endstop with COM to ground and NC to Signal uses "false" here (most common setup).
@@ -353,6 +357,11 @@ const bool X_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic o
 const bool Y_MAX_ENDSTOP_INVERTING = true; // set to true to invert the logic of the endstop.
 const bool Z_MAX_ENDSTOP_INVERTING = false; // set to true to invert the logic of the endstop.
 const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the logic of the endstop.
+
+// Endstops for foam cutter
+#define U_MIN_ENDSTOP_INVERTING X_MAX_ENDSTOP_INVERTING
+#define V_MAX_ENDSTOP_INVERTING Z_MAX_ENDSTOP_INVERTING
+
 //#define DISABLE_MAX_ENDSTOPS
 //#define DISABLE_MIN_ENDSTOPS
 
@@ -373,7 +382,7 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 // WARNING: When motors turn off there is a chance of losing position accuracy!
 #define DISABLE_X false
 #define DISABLE_Y false
-#define DISABLE_Z true
+#define DISABLE_Z false
 
 // @section extruder
 
@@ -402,7 +411,10 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 // :[-1,1]
 #define X_HOME_DIR -1	// cutter
 #define Y_HOME_DIR 1	// cutter
-#define Z_HOME_DIR -1
+#define Z_HOME_DIR 1	// cutter
+
+#define U_HOME_DIR X_HOME_DIR	// cutter
+#define W_HOME_DIR Y_HOME_DIR	// cutter
 
 #define min_software_endstops true // If true, axis won't move to coordinates less than HOME_POS.
 #define max_software_endstops true  // If true, axis won't move to coordinates greater than the defined lengths below.
@@ -413,9 +425,14 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 #define X_MIN_POS 0
 #define Y_MIN_POS 0
 #define Z_MIN_POS 0
-#define X_MAX_POS 200
+#define X_MAX_POS 320
 #define Y_MAX_POS 200
-#define Z_MAX_POS 220
+#define Z_MAX_POS 200
+
+#define U_MIN_POS X_MIN_POS
+#define V_MIN_POS Y_MIN_POS
+#define U_MAX_POS X_MAX_POS
+#define V_MAX_POS Y_MAX_POS
 
 //===========================================================================
 //========================= Filament Runout Sensor ==========================
@@ -602,7 +619,7 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 // default settings
 
 //#define DEFAULT_AXIS_STEPS_PER_UNIT   {80,80,4000,500}  // default steps per unit for Ultimaker
-#define DEFAULT_AXIS_STEPS_PER_UNIT   {200.00,200.00,200.00,200.00}  // GT2 20tooth x and y axis, 16->80tooth belt extruder
+#define DEFAULT_AXIS_STEPS_PER_UNIT   {200.00,200.00,200.00,200.00}  // GT2 16tooth on CoreXY
 #define DEFAULT_MAX_FEEDRATE          {50, 50, 50, 50}    // (mm/sec)
 #define DEFAULT_MAX_ACCELERATION      {500,500,500,500}    // X, Y, Z, E maximum start speed for accelerated moves. E default values are good for skeinforge 40+, for older versions raise them a lot.
 
