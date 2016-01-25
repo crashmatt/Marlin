@@ -151,6 +151,23 @@ void manage_inactivity(bool ignore_stepper_queue = false);
   #define disable_z() ;
 #endif
 
+#if ENABLED(COREXYUV)
+	#if HAS_X_ENABLE
+	  #define  enable_u() U_ENABLE_WRITE( U_ENABLE_ON)
+	  #define disable_u() { U_ENABLE_WRITE(!U_ENABLE_ON); axis_known_position[U_AXIS] = false; }
+	#else
+	  #define enable_u() ;
+	  #define disable_u() ;
+	#endif
+	#if HAS_Y_ENABLE
+	  #define  enable_v() V_ENABLE_WRITE( V_ENABLE_ON)
+	  #define disable_v() { V_ENABLE_WRITE(!V_ENABLE_ON); axis_known_position[V_AXIS] = false; }
+	#else
+	  #define enable_v() ;
+	  #define disable_v() ;
+	#endif
+#else
+
 #if HAS_E0_ENABLE
   #define enable_e0()  E0_ENABLE_WRITE( E_ENABLE_ON)
   #define disable_e0() E0_ENABLE_WRITE(!E_ENABLE_ON)
@@ -183,6 +200,8 @@ void manage_inactivity(bool ignore_stepper_queue = false);
   #define disable_e3() /* nothing */
 #endif
 
+#endif //ENABLED(COREXYUV)
+
 /**
  * The axis order in all axis related arrays is X, Y, Z, E
  */
@@ -196,7 +215,7 @@ void manage_inactivity(bool ignore_stepper_queue = false);
  * ABCD axis is used for foam cutter
  * U_HEAD and V_HEAD is used for COREXY foam cutter.
  */
-enum AxisEnum {X_AXIS = 0, A_AXIS = 0, Y_AXIS = 1, B_AXIS = 1, Z_AXIS = 2, C_AXIS = 2, E_AXIS = 3, D_AXIS = 3, X_HEAD = 4, Y_HEAD = 5, Z_HEAD = 5, U_HEAD = 6, V_HEAD = 7};
+enum AxisEnum {X_AXIS = 0, A_AXIS = 0, Y_AXIS = 1, B_AXIS = 1, Z_AXIS = 2, U_AXIS = 2, C_AXIS = 2, E_AXIS = 3, D_AXIS = 3, V_AXIS = 3, X_HEAD = 4, Y_HEAD = 5, Z_HEAD = 5, U_HEAD = 6, V_HEAD = 7};
 
 enum EndstopEnum {X_MIN = 0, Y_MIN = 1, Z_MIN = 2, Z_MIN_PROBE = 3, X_MAX = 4, Y_MAX = 5, Z_MAX = 6, Z2_MIN = 7, Z2_MAX = 8, U_MIN = 9, V_MAX = 10};
 

@@ -2725,14 +2725,19 @@ inline void gcode_M18_M84() {
       if (code_seen('X')) disable_x();
       if (code_seen('Y')) disable_y();
       if (code_seen('Z')) disable_z();
-      #if ((E0_ENABLE_PIN != X_ENABLE_PIN) && (E1_ENABLE_PIN != Y_ENABLE_PIN)) // Only enable on boards that have seperate ENABLE_PINS
-        if (code_seen('E')) {
-          disable_e0();
-          disable_e1();
-          disable_e2();
-          disable_e3();
-        }
-      #endif
+      #if DISABLED(COREXYUV)
+		  #if ((E0_ENABLE_PIN != X_ENABLE_PIN) && (E1_ENABLE_PIN != Y_ENABLE_PIN)) // Only enable on boards that have seperate ENABLE_PINS
+			if (code_seen('E')) {
+			  disable_e0();
+			  disable_e1();
+			  disable_e2();
+			  disable_e3();
+			}
+		  #endif
+	  #else
+        if (code_seen('U')) disable_u();
+        if (code_seen('V')) disable_v();
+	  #endif // DISABLED(COREXYUV)
     }
   }
 }
@@ -5362,6 +5367,7 @@ void plan_arc(
 #endif
 
 void enable_all_steppers() {
+#if DISABLED(COREXYUV)
   enable_x();
   enable_y();
   enable_z();
@@ -5369,9 +5375,16 @@ void enable_all_steppers() {
   enable_e1();
   enable_e2();
   enable_e3();
+#else
+  enable_x();
+  enable_y();
+  enable_u();
+  enable_v();
+#endif
 }
 
 void disable_all_steppers() {
+#if DISABLED(COREXYUV)
   disable_x();
   disable_y();
   disable_z();
@@ -5379,6 +5392,12 @@ void disable_all_steppers() {
   disable_e1();
   disable_e2();
   disable_e3();
+#else
+  disable_x();
+  disable_y();
+  disable_u();
+  disable_v();
+#endif
 }
 
 /**
