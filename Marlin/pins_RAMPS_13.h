@@ -63,6 +63,18 @@
 #define E1_DIR_PIN         34
 #define E1_ENABLE_PIN      30
 
+#define U_STEP_PIN         Z_STEP_PIN
+#define U_DIR_PIN          Z_DIR_PIN
+#define U_ENABLE_PIN       Z_ENABLE_PIN
+#define U_MIN_PIN          Z_MIN_PIN
+#define U_MAX_PIN			-1
+
+#define V_STEP_PIN        	E0_STEP_PIN
+#define V_DIR_PIN         	E0_DIR_PIN
+#define V_ENABLE_PIN      	E0_ENABLE_PIN
+#define V_MIN_PIN          	-1
+#define V_MAX_PIN			Z_MAX_PIN
+
 #define SDPOWER            -1
 #define SDSS               53
 #define LED_PIN            13
