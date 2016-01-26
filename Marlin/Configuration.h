@@ -312,13 +312,13 @@ Here are some standard links for getting your machine calibrated:
 // @section machine
 
 // Uncomment this option to enable CoreXY kinematics
-#define COREXY
+//#define COREXY
 
 // Uncomment this option to enable CoreXZ kinematics
 //#define COREXZ
 
 // Uncomment this option to enable dual CoreXY-CoreUV foam cutter
-#define COREUV
+#define COREXYUV
 
 // Enable this option for Toshiba steppers
 //#define CONFIG_STEPPERS_TOSHIBA
@@ -378,11 +378,17 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 #define Z_ENABLE_ON 0
 #define E_ENABLE_ON 0 // For all extruders
 
+#define U_ENABLE_ON 0
+#define V_ENABLE_ON 0
+
 // Disables axis when it's not being used.
 // WARNING: When motors turn off there is a chance of losing position accuracy!
 #define DISABLE_X false
 #define DISABLE_Y false
 #define DISABLE_Z false
+
+#define DISABLE_U false
+#define DISABLE_V false
 
 // @section extruder
 
