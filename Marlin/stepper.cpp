@@ -991,7 +991,9 @@ void st_init() {
     _WRITE_STEP(AXIS, _INVERT_STEP_PIN(PIN)); \
     _DISABLE(axis)
 
+  #if DISABLED(COREXYUV)
   #define E_AXIS_INIT(NUM) AXIS_INIT(e## NUM, E## NUM, E)
+  #endif
 
   // Initialize Step Pins
   #if HAS_X_STEP
@@ -1014,6 +1016,7 @@ void st_init() {
     #endif
     AXIS_INIT(z, Z, Z);
   #endif
+  #if DISABLED(COREXYUV)
   #if HAS_E0_STEP
     E_AXIS_INIT(0);
   #endif
@@ -1025,6 +1028,7 @@ void st_init() {
   #endif
   #if HAS_E3_STEP
     E_AXIS_INIT(3);
+  #endif
   #endif
 
   // waveform generation = 0100 = CTC
