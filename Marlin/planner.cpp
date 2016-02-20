@@ -420,6 +420,7 @@ void check_axes_activity() {
       block_index = next_block_index(block_index);
     }
   }
+  #if DISABLED(COREXYUV)
   if (DISABLE_X && !axis_active[X_AXIS]) disable_x();
   if (DISABLE_Y && !axis_active[Y_AXIS]) disable_y();
   if (DISABLE_Z && !axis_active[Z_AXIS]) disable_z();
@@ -429,6 +430,12 @@ void check_axes_activity() {
     disable_e2();
     disable_e3();
   }
+  #else
+  if (DISABLE_X && !axis_active[X_AXIS]) disable_x();
+  if (DISABLE_Y && !axis_active[Y_AXIS]) disable_y();
+  if (DISABLE_U && !axis_active[U_AXIS]) disable_u();
+  if (DISABLE_V && !axis_active[V_AXIS]) disable_v();
+  #endif
 
   #if HAS_FAN
     #ifdef FAN_KICKSTART_TIME
@@ -520,7 +527,7 @@ float junction_deviation = 0.1;
 
     float dx = target[X_AXIS] - position[X_AXIS],
     	  dy = target[Y_AXIS] - position[Y_AXIS],
-          du = target[Z_AXIS] - position[U_AXIS];
+          du = target[Z_AXIS] - position[U_AXIS],
     	  dv = target[Z_AXIS] - position[V_AXIS];
   #endif //DISABLED(COREXYUV)
 
@@ -801,10 +808,14 @@ float junction_deviation = 0.1;
     );
   }
   #else
-  if (block->steps[X_AXIS] <= dropsegments && block->steps[Y_AXIS] <= dropsegments && block->steps[U_AXIS] <= dropsegments) {
-    block->millimeters = fabs(delta_mm[E_AXIS]);
-	  block->millimeters = sqrt(square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD]) +
-			  	  	  	  	  sqrt(square(delta_mm[U_HEAD]) + square(delta_mm[V_HEAD]);
+  if (block->steps[X_AXIS] <= dropsegments &&
+		  block->steps[Y_AXIS] <= dropsegments &&
+		  block->steps[U_AXIS] <= dropsegments &&
+		  block->steps[V_AXIS] <= dropsegments) {
+	  float mm2_max = max( (square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD])),
+			  	  	  	   (square(delta_mm[U_HEAD]) + square(delta_mm[V_HEAD])) );
+	  block->millimeters = sqrt(mm2_max);
+  }
   #endif //DISABLED(COREXYUV)
 
 
@@ -1004,6 +1015,7 @@ float junction_deviation = 0.1;
   #endif
   #endif // DISABLED(COREXYUV)
 
+  #if DISABLED(COREXYUV)
   // Start with a safe speed
   float vmax_junction = max_xy_jerk / 2;
   float vmax_junction_factor = 1.0;
@@ -1030,6 +1042,28 @@ float junction_deviation = 0.1;
 
     vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor); // Limit speed to max previous speed
   }
+  #else // DISABLED(COREXYUV)
+  // Start with a safe speed
+  float vmax_junction = max_xy_jerk / 2;
+  float vmax_junction_factor = 1.0;
+  vmax_junction = min(vmax_junction, block->nominal_speed);
+  float safe_speed = vmax_junction;
+
+  if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
+    float dx = current_speed[X_AXIS] - previous_speed[X_AXIS],
+          dy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
+		  du = current_speed[U_AXIS] - previous_speed[U_AXIS],
+		  dv = current_speed[V_AXIS] - previous_speed[V_AXIS],
+          jerk = max( sqrt(dx * dx + dy * dy), sqrt(du * du + dv * dv));
+
+    //    if ((fabs(previous_speed[X_AXIS]) > 0.0001) || (fabs(previous_speed[Y_AXIS]) > 0.0001)) {
+    vmax_junction = block->nominal_speed;
+    //    }
+    if (jerk > max_xy_jerk) vmax_junction_factor = max_xy_jerk / jerk;
+    vmax_junction = min(previous_nominal_speed, vmax_junction * vmax_junction_factor); // Limit speed to max previous speed
+  }
+  #endif // DISABLED(COREXYUV)
+
   block->max_entry_speed = vmax_junction;
 
   // Initialize block entry speed. Compute based on deceleration to user-defined MINIMUM_PLANNER_SPEED.
@@ -1051,6 +1085,7 @@ float junction_deviation = 0.1;
   for (int i = 0; i < NUM_AXIS; i++) previous_speed[i] = current_speed[i];
   previous_nominal_speed = block->nominal_speed;
 
+  #if DISABLED(COREXYUV)
   #if ENABLED(ADVANCE)
     // Calculate advance rate
     if (!bse || (!bsx && !bsy && !bsz)) {
@@ -1071,6 +1106,7 @@ float junction_deviation = 0.1;
      SERIAL_ECHOLN(block->advance_rate/256.0);
      */
   #endif // ADVANCE
+  #endif // DISABLED(COREXYUV)
 
   #if DISABLED(COREXYUV)
     calculate_trapezoid_for_block(block, block->entry_speed / block->nominal_speed, safe_speed / block->nominal_speed);
