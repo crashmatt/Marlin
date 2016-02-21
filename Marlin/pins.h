@@ -44,6 +44,9 @@
 #elif MB(RAMPS_14_EEB) || MB(RAMPS_14_EFF) || MB(RAMPS_14_EEF) || MB(RAMPS_14_SF)
   #define IS_RAMPS_14
   #include "pins_RAMPS_13.h"
+#elif MB(RAMPS_14_XYUV)
+  #define IS_RAMPS_14
+  #include "pins_RAMPS_13_XYUV.h"
 #elif MB(GEN6)
   #include "pins_GEN6.h"
 #elif MB(GEN6_DELUXE)
