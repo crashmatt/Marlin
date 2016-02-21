@@ -41,6 +41,9 @@
   #if ENABLED(DELTA) && ENABLED(BABYSTEP_XY)
     #error BABYSTEPPING only implemented for Z axis on deltabots.
   #endif
+	#if ENABLED(COREXYUV) && ENABLED(BABYSTEP_XY)
+		#error No BABYSTEPPING forn CoreXYUV.
+	#endif
 #endif
 
 /**
@@ -322,15 +325,17 @@
   #endif
 #endif
 
-#if !HAS_HEATER_0
-  #error HEATER_0_PIN not defined for this board.
-#elif !PIN_EXISTS(TEMP_0)
-  #error TEMP_0_PIN not defined for this board.
-#elif !PIN_EXISTS(E0_STEP) || !PIN_EXISTS(E0_DIR) || !PIN_EXISTS(E0_ENABLE)
-  #error E0_STEP_PIN, E0_DIR_PIN, or E0_ENABLE_PIN not defined for this board.
-#elif TEMP_SENSOR_0 == 0
-  #error TEMP_SENSOR_0 is required.
-#endif
+#if DISABLED(COREXYUV)
+	#if !HAS_HEATER_0
+		#error HEATER_0_PIN not defined for this board.
+	#elif !PIN_EXISTS(TEMP_0)
+		#error TEMP_0_PIN not defined for this board.
+	#elif !PIN_EXISTS(E0_STEP) || !PIN_EXISTS(E0_DIR) || !PIN_EXISTS(E0_ENABLE)
+		#error E0_STEP_PIN, E0_DIR_PIN, or E0_ENABLE_PIN not defined for this board.
+	#elif TEMP_SENSOR_0 == 0
+		#error TEMP_SENSOR_0 is required.
+	#endif
+#endif	//DISABLED(COREXYUV)
 
 /**
  * Warnings for old configurations
