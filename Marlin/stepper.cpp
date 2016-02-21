@@ -56,7 +56,11 @@ static unsigned int cleaning_buffer_counter;
 #endif
 
 // Counter variables for the Bresenham line tracer
-static long counter_x, counter_y, counter_z, counter_e;
+#if DISABLED(COREXYUV)
+  static long counter_x, counter_y, counter_z, counter_e;
+#else
+  static long counter_x, counter_y, counter_u, counter_v;
+#endif
 volatile static unsigned long step_events_completed; // The number of step events executed in the current block
 
 #if ENABLED(ADVANCE)
@@ -131,33 +135,40 @@ volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
   #define Y_APPLY_STEP(v,Q) Y_STEP_WRITE(v)
 #endif
 
-#if ENABLED(Z_DUAL_STEPPER_DRIVERS)
-  #define Z_APPLY_DIR(v,Q) { Z_DIR_WRITE(v); Z2_DIR_WRITE(v); }
-  #if ENABLED(Z_DUAL_ENDSTOPS)
-    #define Z_APPLY_STEP(v,Q) \
-    if (performing_homing) { \
-      if (Z_HOME_DIR > 0) {\
-        if (!(TEST(old_endstop_bits, Z_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
-        if (!(TEST(old_endstop_bits, Z2_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
-      } \
-      else { \
-        if (!(TEST(old_endstop_bits, Z_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
-        if (!(TEST(old_endstop_bits, Z2_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
-      } \
-    } \
-    else { \
-      Z_STEP_WRITE(v); \
-      Z2_STEP_WRITE(v); \
-    }
-  #else
-    #define Z_APPLY_STEP(v,Q) { Z_STEP_WRITE(v); Z2_STEP_WRITE(v); }
-  #endif
-#else
-  #define Z_APPLY_DIR(v,Q) Z_DIR_WRITE(v)
-  #define Z_APPLY_STEP(v,Q) Z_STEP_WRITE(v)
-#endif
+#if ENABLED(COREXYUV)
+	#define U_APPLY_DIR(u,Q) U_DIR_WRITE(u)
+	#define U_APPLY_STEP(u,Q) U_STEP_WRITE(u)
+	#define V_APPLY_DIR(v,Q) U_DIR_WRITE(v)
+	#define V_APPLY_STEP(v,Q) U_STEP_WRITE(v)
+#else //ENABLED(COREXYUV)
+	#if ENABLED(Z_DUAL_STEPPER_DRIVERS)
+		#define Z_APPLY_DIR(v,Q) { Z_DIR_WRITE(v); Z2_DIR_WRITE(v); }
+		#if ENABLED(Z_DUAL_ENDSTOPS)
+			#define Z_APPLY_STEP(v,Q) \
+			if (performing_homing) { \
+				if (Z_HOME_DIR > 0) {\
+					if (!(TEST(old_endstop_bits, Z_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
+					if (!(TEST(old_endstop_bits, Z2_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
+				} \
+				else { \
+					if (!(TEST(old_endstop_bits, Z_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
+					if (!(TEST(old_endstop_bits, Z2_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
+				} \
+			} \
+			else { \
+				Z_STEP_WRITE(v); \
+				Z2_STEP_WRITE(v); \
+			}
+		#else
+			#define Z_APPLY_STEP(v,Q) { Z_STEP_WRITE(v); Z2_STEP_WRITE(v); }
+		#endif
+	#else
+		#define Z_APPLY_DIR(v,Q) Z_DIR_WRITE(v)
+		#define Z_APPLY_STEP(v,Q) Z_STEP_WRITE(v)
+	#endif
 
-#define E_APPLY_STEP(v,Q) E_STEP_WRITE(v)
+	#define E_APPLY_STEP(v,Q) E_STEP_WRITE(v)
+#endif // ENABLED(COREXYUV)
 
 // intRes = intIn1 * intIn2 >> 16
 // uses:
@@ -521,43 +532,80 @@ FORCE_INLINE unsigned short calc_timer(unsigned short step_rate) {
  */
 void set_stepper_direction() {
 
-  if (TEST(out_bits, X_AXIS)) { // A_AXIS
-    X_APPLY_DIR(INVERT_X_DIR, 0);
-    count_direction[X_AXIS] = -1;
-  }
-  else {
-    X_APPLY_DIR(!INVERT_X_DIR, 0);
-    count_direction[X_AXIS] = 1;
-  }
+	#if DISABLED(COREXYUV)
+		if (TEST(out_bits, X_AXIS)) { // A_AXIS
+			X_APPLY_DIR(INVERT_X_DIR, 0);
+			count_direction[X_AXIS] = -1;
+		}
+		else {
+			X_APPLY_DIR(!INVERT_X_DIR, 0);
+			count_direction[X_AXIS] = 1;
+		}
 
-  if (TEST(out_bits, Y_AXIS)) { // B_AXIS
-    Y_APPLY_DIR(INVERT_Y_DIR, 0);
-    count_direction[Y_AXIS] = -1;
-  }
-  else {
-    Y_APPLY_DIR(!INVERT_Y_DIR, 0);
-    count_direction[Y_AXIS] = 1;
-  }
+		if (TEST(out_bits, Y_AXIS)) { // B_AXIS
+			Y_APPLY_DIR(INVERT_Y_DIR, 0);
+			count_direction[Y_AXIS] = -1;
+		}
+		else {
+			Y_APPLY_DIR(!INVERT_Y_DIR, 0);
+			count_direction[Y_AXIS] = 1;
+		}
+		if (TEST(out_bits, Z_AXIS)) { // C_AXIS
+			Z_APPLY_DIR(INVERT_Z_DIR, 0);
+			count_direction[Z_AXIS] = -1;
+		}
+		else {
+			Z_APPLY_DIR(!INVERT_Z_DIR, 0);
+			count_direction[Z_AXIS] = 1;
+		}
+		#if DISABLED(ADVANCE)
+			if (TEST(out_bits, E_AXIS)) {
+				REV_E_DIR();
+				count_direction[E_AXIS] = -1;
+			}
+			else {
+				NORM_E_DIR();
+				count_direction[E_AXIS] = 1;
+			}
+		#endif //!ADVANCE
 
-  if (TEST(out_bits, Z_AXIS)) { // C_AXIS
-    Z_APPLY_DIR(INVERT_Z_DIR, 0);
-    count_direction[Z_AXIS] = -1;
-  }
-  else {
-    Z_APPLY_DIR(!INVERT_Z_DIR, 0);
-    count_direction[Z_AXIS] = 1;
-  }
+  #else   // DISABLED(COREXYUV)
+		if (TEST(out_bits, X_AXIS)) { // A_AXIS
+			X_APPLY_DIR(INVERT_X_DIR, 0);
+			count_direction[X_AXIS] = -1;
+		}
+		else {
+			X_APPLY_DIR(!INVERT_X_DIR, 0);
+			count_direction[X_AXIS] = 1;
+		}
 
-  #if DISABLED(ADVANCE)
-    if (TEST(out_bits, E_AXIS)) {
-      REV_E_DIR();
-      count_direction[E_AXIS] = -1;
-    }
-    else {
-      NORM_E_DIR();
-      count_direction[E_AXIS] = 1;
-    }
-  #endif //!ADVANCE
+		if (TEST(out_bits, Y_AXIS)) { // B_AXIS
+			Y_APPLY_DIR(INVERT_Y_DIR, 0);
+			count_direction[Y_AXIS] = -1;
+		}
+		else {
+			Y_APPLY_DIR(!INVERT_Y_DIR, 0);
+			count_direction[Y_AXIS] = 1;
+		}
+
+		if (TEST(out_bits, U_AXIS)) { // B_AXIS
+			U_APPLY_DIR(INVERT_U_DIR, 0);
+			count_direction[U_AXIS] = -1;
+		}
+		else {
+			U_APPLY_DIR(!INVERT_U_DIR, 0);
+			count_direction[U_AXIS] = 1;
+		}
+		if (TEST(out_bits, V_AXIS)) { // B_AXIS
+			V_APPLY_DIR(INVERT_V_DIR, 0);
+			count_direction[V_AXIS] = -1;
+		}
+		else {
+			V_APPLY_DIR(!INVERT_V_DIR, 0);
+			count_direction[V_AXIS] = 1;
+		}
+  #endif // DISABLED(COREXYUV)
+
 }
 
 // Initializes the trapezoid generator from the current block. Called whenever a new
@@ -619,7 +667,11 @@ ISR(TIMER1_COMPA_vect) {
       current_block->busy = true;
       trapezoid_generator_reset();
       counter_x = -(current_block->step_event_count >> 1);
-      counter_y = counter_z = counter_e = counter_x;
+			#if DISABLED(COREXYUV)
+      	counter_y = counter_z = counter_e = counter_x;
+			#else
+      	counter_y = counter_u = counter_v = counter_x;
+			#endif
       step_events_completed = 0;
 
       #if ENABLED(Z_LATE_ENABLE)
@@ -666,12 +718,19 @@ ISR(TIMER1_COMPA_vect) {
         _COUNTER(axis) += current_block->steps[_AXIS(AXIS)]; \
         if (_COUNTER(axis) > 0) { _APPLY_STEP(AXIS)(!_INVERT_STEP_PIN(AXIS),0); }
 
+	  #if DISABLED(COREXYUV)
       STEP_ADD(x,X);
-      STEP_ADD(y,Y);
-      STEP_ADD(z,Z);
-      #if DISABLED(ADVANCE)
-        STEP_ADD(e,E);
-      #endif
+			STEP_ADD(y,Y);
+			STEP_ADD(z,Z);
+			#if DISABLED(ADVANCE)
+				STEP_ADD(e,E);
+			#endif
+	  #else	  //DISABLED(COREXYUV)
+			STEP_ADD(x,X);
+			STEP_ADD(y,Y);
+			STEP_ADD(u,U);
+			STEP_ADD(v,V);
+	  #endif  //DISABLED(COREXYUV)
 
       #define STEP_IF_COUNTER(axis, AXIS) \
         if (_COUNTER(axis) > 0) { \
@@ -680,12 +739,19 @@ ISR(TIMER1_COMPA_vect) {
           _APPLY_STEP(AXIS)(_INVERT_STEP_PIN(AXIS),0); \
         }
 
+	  #if DISABLED(COREXYUV)
       STEP_IF_COUNTER(x, X);
       STEP_IF_COUNTER(y, Y);
       STEP_IF_COUNTER(z, Z);
       #if DISABLED(ADVANCE)
         STEP_IF_COUNTER(e, E);
       #endif
+	  #else	//DISABLED(COREXYUV)
+        STEP_IF_COUNTER(x,X);
+        STEP_IF_COUNTER(y,Y);
+        STEP_IF_COUNTER(u,U);
+        STEP_IF_COUNTER(v,V);
+	  #endif //DISABLED(COREXYUV)
 
       step_events_completed++;
       if (step_events_completed >= current_block->step_event_count) break;
@@ -848,81 +914,114 @@ void st_init() {
   #endif
 
   // Initialize Dir Pins
-  #if HAS_X_DIR
-    X_DIR_INIT;
-  #endif
-  #if HAS_X2_DIR
-    X2_DIR_INIT;
-  #endif
-  #if HAS_Y_DIR
-    Y_DIR_INIT;
-    #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_DIR
-      Y2_DIR_INIT;
-    #endif
-  #endif
-  #if HAS_Z_DIR
-    Z_DIR_INIT;
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_DIR
-      Z2_DIR_INIT;
-    #endif
-  #endif
-  #if HAS_E0_DIR
-    E0_DIR_INIT;
-  #endif
-  #if HAS_E1_DIR
-    E1_DIR_INIT;
-  #endif
-  #if HAS_E2_DIR
-    E2_DIR_INIT;
-  #endif
-  #if HAS_E3_DIR
-    E3_DIR_INIT;
-  #endif
+  #if DISABLED(COREXUV)
+		#if HAS_X_DIR
+			X_DIR_INIT;
+		#endif
+		#if HAS_X2_DIR
+			X2_DIR_INIT;
+		#endif
+		#if HAS_Y_DIR
+			Y_DIR_INIT;
+			#if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_DIR
+				Y2_DIR_INIT;
+			#endif
+		#endif
+		#if HAS_Z_DIR
+			Z_DIR_INIT;
+			#if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_DIR
+				Z2_DIR_INIT;
+			#endif
+		#endif
+		#if HAS_E0_DIR
+			E0_DIR_INIT;
+		#endif
+		#if HAS_E1_DIR
+			E1_DIR_INIT;
+		#endif
+		#if HAS_E2_DIR
+			E2_DIR_INIT;
+		#endif
+		#if HAS_E3_DIR
+			E3_DIR_INIT;
+		#endif
+	#else // DISABLED(COREXYUV)
+		#if HAS_X_DIR
+			X_DIR_INIT;
+		#endif
+		#if HAS_Y_DIR
+			Y_DIR_INIT;
+		#endif
+		#if HAS_U_DIR
+			U_DIR_INIT;
+		#endif
+		#if HAS_V_DIR
+			V_DIR_INIT;
+		#endif
+	#endif // ENABLED(COREXYUV)
 
   //Initialize Enable Pins - steppers default to disabled.
+	#if DISABLED(COREXYUV)
+		#if HAS_X_ENABLE
+			X_ENABLE_INIT;
+			if (!X_ENABLE_ON) X_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_X2_ENABLE
+			X2_ENABLE_INIT;
+			if (!X_ENABLE_ON) X2_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_Y_ENABLE
+			Y_ENABLE_INIT;
+			if (!Y_ENABLE_ON) Y_ENABLE_WRITE(HIGH);
 
-  #if HAS_X_ENABLE
-    X_ENABLE_INIT;
-    if (!X_ENABLE_ON) X_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_X2_ENABLE
-    X2_ENABLE_INIT;
-    if (!X_ENABLE_ON) X2_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_Y_ENABLE
-    Y_ENABLE_INIT;
-    if (!Y_ENABLE_ON) Y_ENABLE_WRITE(HIGH);
+		#if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_ENABLE
+			Y2_ENABLE_INIT;
+			if (!Y_ENABLE_ON) Y2_ENABLE_WRITE(HIGH);
+		#endif
+		#endif
+		#if HAS_Z_ENABLE
+			Z_ENABLE_INIT;
+			if (!Z_ENABLE_ON) Z_ENABLE_WRITE(HIGH);
 
-  #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_ENABLE
-    Y2_ENABLE_INIT;
-    if (!Y_ENABLE_ON) Y2_ENABLE_WRITE(HIGH);
-  #endif
-  #endif
-  #if HAS_Z_ENABLE
-    Z_ENABLE_INIT;
-    if (!Z_ENABLE_ON) Z_ENABLE_WRITE(HIGH);
-
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_ENABLE
-      Z2_ENABLE_INIT;
-      if (!Z_ENABLE_ON) Z2_ENABLE_WRITE(HIGH);
-    #endif
-  #endif
-  #if HAS_E0_ENABLE
-    E0_ENABLE_INIT;
-    if (!E_ENABLE_ON) E0_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_E1_ENABLE
-    E1_ENABLE_INIT;
-    if (!E_ENABLE_ON) E1_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_E2_ENABLE
-    E2_ENABLE_INIT;
-    if (!E_ENABLE_ON) E2_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_E3_ENABLE
-    E3_ENABLE_INIT;
-    if (!E_ENABLE_ON) E3_ENABLE_WRITE(HIGH);
-  #endif
+			#if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_ENABLE
+				Z2_ENABLE_INIT;
+				if (!Z_ENABLE_ON) Z2_ENABLE_WRITE(HIGH);
+			#endif
+		#endif
+		#if HAS_E0_ENABLE
+			E0_ENABLE_INIT;
+			if (!E_ENABLE_ON) E0_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_E1_ENABLE
+			E1_ENABLE_INIT;
+			if (!E_ENABLE_ON) E1_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_E2_ENABLE
+			E2_ENABLE_INIT;
+			if (!E_ENABLE_ON) E2_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_E3_ENABLE
+			E3_ENABLE_INIT;
+			if (!E_ENABLE_ON) E3_ENABLE_WRITE(HIGH);
+		#endif
+	#else	// DISABLED(COREXYUV)
+		#if HAS_X_ENABLE
+			X_ENABLE_INIT;
+			if (!X_ENABLE_ON) X_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_Y_ENABLE
+			Y_ENABLE_INIT;
+			if (!Y_ENABLE_ON) Y_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_U_ENABLE
+			U_ENABLE_INIT;
+			if (!U_ENABLE_ON) U_ENABLE_WRITE(HIGH);
+		#endif
+		#if HAS_V_ENABLE
+			V_ENABLE_INIT;
+			if (!V_ENABLE_ON) V_ENABLE_WRITE(HIGH);
+		#endif
+	#endif //DISABLED(COREXYUV)
 
   //endstops and pullups
 
@@ -992,44 +1091,57 @@ void st_init() {
     _DISABLE(axis)
 
   #if DISABLED(COREXYUV)
-  #define E_AXIS_INIT(NUM) AXIS_INIT(e## NUM, E## NUM, E)
+  	#define E_AXIS_INIT(NUM) AXIS_INIT(e## NUM, E## NUM, E)
   #endif
 
   // Initialize Step Pins
-  #if HAS_X_STEP
-    AXIS_INIT(x, X, X);
-  #endif
-  #if HAS_X2_STEP
-    AXIS_INIT(x, X2, X);
-  #endif
-  #if HAS_Y_STEP
-    #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_STEP
-      Y2_STEP_INIT;
-      Y2_STEP_WRITE(INVERT_Y_STEP_PIN);
-    #endif
-    AXIS_INIT(y, Y, Y);
-  #endif
-  #if HAS_Z_STEP
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_STEP
-      Z2_STEP_INIT;
-      Z2_STEP_WRITE(INVERT_Z_STEP_PIN);
-    #endif
-    AXIS_INIT(z, Z, Z);
-  #endif
-  #if DISABLED(COREXYUV)
-  #if HAS_E0_STEP
-    E_AXIS_INIT(0);
-  #endif
-  #if HAS_E1_STEP
-    E_AXIS_INIT(1);
-  #endif
-  #if HAS_E2_STEP
-    E_AXIS_INIT(2);
-  #endif
-  #if HAS_E3_STEP
-    E_AXIS_INIT(3);
-  #endif
-  #endif
+	#if DISABLED(COREXYUV)
+		#if HAS_X_STEP
+			AXIS_INIT(x, X, X);
+		#endif
+		#if HAS_X2_STEP
+			AXIS_INIT(x, X2, X);
+		#endif
+		#if HAS_Y_STEP
+			#if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_STEP
+				Y2_STEP_INIT;
+				Y2_STEP_WRITE(INVERT_Y_STEP_PIN);
+			#endif
+			AXIS_INIT(y, Y, Y);
+		#endif
+		#if HAS_Z_STEP
+			#if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_STEP
+				Z2_STEP_INIT;
+				Z2_STEP_WRITE(INVERT_Z_STEP_PIN);
+			#endif
+			AXIS_INIT(z, Z, Z);
+		#endif
+		#if HAS_E0_STEP
+			E_AXIS_INIT(0);
+		#endif
+		#if HAS_E1_STEP
+			E_AXIS_INIT(1);
+		#endif
+		#if HAS_E2_STEP
+			E_AXIS_INIT(2);
+		#endif
+		#if HAS_E3_STEP
+			E_AXIS_INIT(3);
+		#endif
+	#else  // DISABLED(COREXYUV)
+		#if HAS_X_STEP
+			AXIS_INIT(x, X, X);
+		#endif
+		#if HAS_Y_STEP
+			AXIS_INIT(y, Y, Y);
+		#endif
+		#if HAS_U_STEP
+			AXIS_INIT(u,U, U);
+		#endif
+		#if HAS_V_STEP
+			AXIS_INIT(v, V, V);
+		#endif
+  #endif // DISABLED(COREXYUV)
 
   // waveform generation = 0100 = CTC
   TCCR1B &= ~BIT(WGM13);
@@ -1072,20 +1184,35 @@ void st_init() {
  */
 void st_synchronize() { while (blocks_queued()) idle(); }
 
+#if DISABLED(COREXYUV)
 void st_set_position(const long& x, const long& y, const long& z, const long& e) {
-  CRITICAL_SECTION_START;
+	CRITICAL_SECTION_START;
   count_position[X_AXIS] = x;
   count_position[Y_AXIS] = y;
-  count_position[Z_AXIS] = z;
-  count_position[E_AXIS] = e;
+	count_position[Z_AXIS] = z;
+	count_position[E_AXIS] = e;
   CRITICAL_SECTION_END;
 }
 
 void st_set_e_position(const long& e) {
-  CRITICAL_SECTION_START;
-  count_position[E_AXIS] = e;
+	CRITICAL_SECTION_START;
+	count_position[E_AXIS] = e;
+	CRITICAL_SECTION_END;
+}
+
+#else
+void st_set_position(const long& x, const long& y, const long& u, const long& v) {
+	CRITICAL_SECTION_START;
+  count_position[X_AXIS] = x;
+  count_position[Y_AXIS] = y;
+  count_position[U_AXIS] = u;
+  count_position[V_AXIS] = v;
   CRITICAL_SECTION_END;
 }
+void st_set_e_position(const long& e) {
+}
+#endif	//DISABLED(COREXYUV)
+
 
 long st_get_position(uint8_t axis) {
   long count_pos;
@@ -1141,42 +1268,52 @@ void quickStop() {
         BABYSTEP_AXIS(y, Y, false);
         break;
 
-      case Z_AXIS: {
+			#if DISABLED(COREXYUV)
+				case Z_AXIS: {
 
-        #if DISABLED(DELTA)
+					#if DISABLED(DELTA)
 
-          BABYSTEP_AXIS(z, Z, BABYSTEP_INVERT_Z);
+						BABYSTEP_AXIS(z, Z, BABYSTEP_INVERT_Z);
 
-        #else // DELTA
+					#else // DELTA
 
-          bool z_direction = direction ^ BABYSTEP_INVERT_Z;
+						bool z_direction = direction ^ BABYSTEP_INVERT_Z;
 
-          enable_x();
-          enable_y();
-          enable_z();
-          uint8_t old_x_dir_pin = X_DIR_READ,
-                  old_y_dir_pin = Y_DIR_READ,
-                  old_z_dir_pin = Z_DIR_READ;
-          //setup new step
-          X_DIR_WRITE(INVERT_X_DIR ^ z_direction);
-          Y_DIR_WRITE(INVERT_Y_DIR ^ z_direction);
-          Z_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
-          //perform step
-          X_STEP_WRITE(!INVERT_X_STEP_PIN);
-          Y_STEP_WRITE(!INVERT_Y_STEP_PIN);
-          Z_STEP_WRITE(!INVERT_Z_STEP_PIN);
-          delayMicroseconds(2);
-          X_STEP_WRITE(INVERT_X_STEP_PIN);
-          Y_STEP_WRITE(INVERT_Y_STEP_PIN);
-          Z_STEP_WRITE(INVERT_Z_STEP_PIN);
-          //get old pin state back.
-          X_DIR_WRITE(old_x_dir_pin);
-          Y_DIR_WRITE(old_y_dir_pin);
-          Z_DIR_WRITE(old_z_dir_pin);
+						enable_x();
+						enable_y();
+						enable_z();
+						uint8_t old_x_dir_pin = X_DIR_READ,
+										old_y_dir_pin = Y_DIR_READ,
+										old_z_dir_pin = Z_DIR_READ;
+						//setup new step
+						X_DIR_WRITE(INVERT_X_DIR ^ z_direction);
+						Y_DIR_WRITE(INVERT_Y_DIR ^ z_direction);
+						Z_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
+						//perform step
+						X_STEP_WRITE(!INVERT_X_STEP_PIN);
+						Y_STEP_WRITE(!INVERT_Y_STEP_PIN);
+						Z_STEP_WRITE(!INVERT_Z_STEP_PIN);
+						delayMicroseconds(2);
+						X_STEP_WRITE(INVERT_X_STEP_PIN);
+						Y_STEP_WRITE(INVERT_Y_STEP_PIN);
+						Z_STEP_WRITE(INVERT_Z_STEP_PIN);
+						//get old pin state back.
+						X_DIR_WRITE(old_x_dir_pin);
+						Y_DIR_WRITE(old_y_dir_pin);
+						Z_DIR_WRITE(old_z_dir_pin);
 
-        #endif
+					#endif
 
-      } break;
+				} break;
+			#else  // DISABLED(COREXYUV)
+	      case U_AXIS:
+	        BABYSTEP_AXIS(u, U, false);
+	        break;
+
+	      case V_AXIS:
+	        BABYSTEP_AXIS(v, V, false);
+	        break;
+			#endif //DISABLED(COREXYUV)
 
       default: break;
     }

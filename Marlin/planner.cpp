@@ -421,21 +421,21 @@ void check_axes_activity() {
     }
   }
   #if DISABLED(COREXYUV)
-  if (DISABLE_X && !axis_active[X_AXIS]) disable_x();
-  if (DISABLE_Y && !axis_active[Y_AXIS]) disable_y();
-  if (DISABLE_Z && !axis_active[Z_AXIS]) disable_z();
-  if (DISABLE_E && !axis_active[E_AXIS]) {
-    disable_e0();
-    disable_e1();
-    disable_e2();
-    disable_e3();
-  }
-  #else
-  if (DISABLE_X && !axis_active[X_AXIS]) disable_x();
-  if (DISABLE_Y && !axis_active[Y_AXIS]) disable_y();
-  if (DISABLE_U && !axis_active[U_AXIS]) disable_u();
-  if (DISABLE_V && !axis_active[V_AXIS]) disable_v();
-  #endif
+		if (DISABLE_X && !axis_active[X_AXIS]) disable_x();
+		if (DISABLE_Y && !axis_active[Y_AXIS]) disable_y();
+		if (DISABLE_Z && !axis_active[Z_AXIS]) disable_z();
+		if (DISABLE_E && !axis_active[E_AXIS]) {
+			disable_e0();
+			disable_e1();
+			disable_e2();
+			disable_e3();
+		}
+  #else	//DISABLED(COREXYUV)
+		if (DISABLE_X && !axis_active[X_AXIS]) disable_x();
+		if (DISABLE_Y && !axis_active[Y_AXIS]) disable_y();
+		if (DISABLE_U && !axis_active[U_AXIS]) disable_u();
+		if (DISABLE_V && !axis_active[V_AXIS]) disable_v();
+  #endif //DISABLED(COREXYUV)
 
   #if HAS_FAN
     #ifdef FAN_KICKSTART_TIME
@@ -519,7 +519,7 @@ float junction_deviation = 0.1;
     float dx = target[X_AXIS] - position[X_AXIS],
     	  dy = target[Y_AXIS] - position[Y_AXIS],
           dz = target[Z_AXIS] - position[Z_AXIS];
-  #else
+  #else	// DISABLED(COREXYUV)
     target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
     target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
     target[U_AXIS] = lround(z * axis_steps_per_unit[U_AXIS]);
@@ -538,24 +538,24 @@ float junction_deviation = 0.1;
 
     float de = target[E_AXIS] - position[E_AXIS];
 
-  #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
-    if (de) {
-      if (degHotend(extruder) < extrude_min_temp) {
-        position[E_AXIS] = target[E_AXIS]; // Behave as if the move really took place, but ignore E part
-        de = 0; // no difference
-        SERIAL_ECHO_START;
-        SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP);
-      }
-      #if ENABLED(PREVENT_LENGTHY_EXTRUDE)
-        if (labs(de) > axis_steps_per_unit[E_AXIS] * EXTRUDE_MAXLENGTH) {
-          position[E_AXIS] = target[E_AXIS]; // Behave as if the move really took place, but ignore E part
-          de = 0; // no difference
-          SERIAL_ECHO_START;
-          SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP);
-        }
-      #endif
-    }
-  #endif	//ENABLED(PREVENT_DANGEROUS_EXTRUDE)
+		#if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
+			if (de) {
+				if (degHotend(extruder) < extrude_min_temp) {
+					position[E_AXIS] = target[E_AXIS]; // Behave as if the move really took place, but ignore E part
+					de = 0; // no difference
+					SERIAL_ECHO_START;
+					SERIAL_ECHOLNPGM(MSG_ERR_COLD_EXTRUDE_STOP);
+				}
+				#if ENABLED(PREVENT_LENGTHY_EXTRUDE)
+					if (labs(de) > axis_steps_per_unit[E_AXIS] * EXTRUDE_MAXLENGTH) {
+						position[E_AXIS] = target[E_AXIS]; // Behave as if the move really took place, but ignore E part
+						de = 0; // no difference
+						SERIAL_ECHO_START;
+						SERIAL_ECHOLNPGM(MSG_ERR_LONG_EXTRUDE_STOP);
+					}
+				#endif
+			}
+		#endif	//ENABLED(PREVENT_DANGEROUS_EXTRUDE)
   #endif 	//DISABLED(COREXYUV)
 
   // Prepare to set up new block
