@@ -67,7 +67,7 @@ Here are some standard links for getting your machine calibrated:
 // Enable the Bluetooth serial interface on AT90USB devices
 //#define BLUETOOTH
 
-#define MOTHERBOARD 35
+#define MOTHERBOARD BOARD_RAMPS_14_XYUV
 
 // The following define selects which electronics board you have.
 // Please choose the name from boards.h that matches your setup
@@ -399,13 +399,16 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 
 // Invert the stepper direction. Change (or reverse the motor connector) if an axis goes the wrong way.
 #define INVERT_X_DIR true		//
-#define INVERT_Y_DIR true   	// cutter
+#define INVERT_Y_DIR true   // cutter
 #define INVERT_Z_DIR false
+
+#define INVERT_U_DIR true		//
+#define INVERT_V_DIR true   // cutter
 
 // @section extruder
 
 // For direct drive extruder v9 set to true, for geared extruder set to false.
-#define INVERT_E0_DIR false   // K8200 belt extruder
+#define INVERT_E0_DIR false
 #define INVERT_E1_DIR false
 #define INVERT_E2_DIR false
 #define INVERT_E3_DIR false
