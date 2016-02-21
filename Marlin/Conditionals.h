@@ -443,6 +443,10 @@
   #define HAS_Z_MAX (PIN_EXISTS(Z_MAX))
   #define HAS_Z2_MIN (PIN_EXISTS(Z2_MIN))
   #define HAS_Z2_MAX (PIN_EXISTS(Z2_MAX))
+	#define HAS_U_MIN (PIN_EXISTS(U_MIN))
+  #define HAS_U_MAX (PIN_EXISTS(U_MAX))
+	#define HAS_V_MIN (PIN_EXISTS(V_MIN))
+  #define HAS_V_MAX (PIN_EXISTS(V_MAX))
   #define HAS_Z_PROBE (PIN_EXISTS(Z_MIN_PROBE))
   #define HAS_SOLENOID_1 (PIN_EXISTS(SOL1))
   #define HAS_SOLENOID_2 (PIN_EXISTS(SOL2))
@@ -462,6 +466,8 @@
   #define HAS_E1_ENABLE (PIN_EXISTS(E1_ENABLE))
   #define HAS_E2_ENABLE (PIN_EXISTS(E2_ENABLE))
   #define HAS_E3_ENABLE (PIN_EXISTS(E3_ENABLE))
+  #define HAS_U_ENABLE (PIN_EXISTS(U_ENABLE))
+  #define HAS_V_ENABLE (PIN_EXISTS(V_ENABLE))
   #define HAS_X_DIR (PIN_EXISTS(X_DIR))
   #define HAS_X2_DIR (PIN_EXISTS(X2_DIR))
   #define HAS_Y_DIR (PIN_EXISTS(Y_DIR))
@@ -472,6 +478,8 @@
   #define HAS_E1_DIR (PIN_EXISTS(E1_DIR))
   #define HAS_E2_DIR (PIN_EXISTS(E2_DIR))
   #define HAS_E3_DIR (PIN_EXISTS(E3_DIR))
+  #define HAS_U_DIR (PIN_EXISTS(U_DIR))
+  #define HAS_V_DIR (PIN_EXISTS(V_DIR))
   #define HAS_X_STEP (PIN_EXISTS(X_STEP))
   #define HAS_X2_STEP (PIN_EXISTS(X2_STEP))
   #define HAS_Y_STEP (PIN_EXISTS(Y_STEP))
@@ -482,6 +490,8 @@
   #define HAS_E1_STEP (PIN_EXISTS(E1_STEP))
   #define HAS_E2_STEP (PIN_EXISTS(E2_STEP))
   #define HAS_E3_STEP (PIN_EXISTS(E3_STEP))
+  #define HAS_U_STEP (PIN_EXISTS(U_STEP))
+  #define HAS_V_STEP (PIN_EXISTS(V_STEP))
 
   /**
    * Helper Macros for heaters and extruder fan
