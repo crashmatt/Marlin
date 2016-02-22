@@ -1153,19 +1153,33 @@ inline void set_homing_bump_feedrate(AxisEnum axis) {
   feedrate = homing_feedrate[axis] / hbd;
 }
 inline void line_to_current_position() {
-  plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], feedrate / 60, active_extruder);
+	#if DISABLED(COREXYUV)
+		plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], feedrate / 60, active_extruder);
+	#else
+		plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[U_AXIS], current_position[V_AXIS], feedrate / 60);
+	#endif	// DISABLED(COREXYUV)
 }
 inline void line_to_z(float zPosition) {
-  plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate / 60, active_extruder);
+	#if DISABLED(COREXYUV)
+		plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate / 60, active_extruder);
+	#endif	// DISABLED(COREXYUV)
 }
 inline void line_to_destination(float mm_m) {
-  plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], mm_m / 60, active_extruder);
+	#if DISABLED(COREXYUV)
+		plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], mm_m / 60, active_extruder);
+	#else
+		plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[U_AXIS], destination[V_AXIS], mm_m / 60);
+	#endif	// DISABLED(COREXYUV)
 }
 inline void line_to_destination() {
   line_to_destination(feedrate);
 }
 inline void sync_plan_position() {
-  plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+	#if DISABLED(COREXYUV)
+		plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+	#else
+		plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[U_AXIS], current_position[V_AXIS]);
+	#endif	// DISABLED(COREXYUV)
 }
 #if ENABLED(DELTA) || ENABLED(SCARA)
   inline void sync_plan_position_delta() {
@@ -5095,12 +5109,12 @@ void prepare_move() {
  * larger segments will tend to be more efficient. Your slicer should have
  * options for G2/G3 arc generation. In future these options may be GCode tunable.
  */
+#if DISABLED(COREXYUV)
 void plan_arc(
   float target[NUM_AXIS], // Destination position
   float* offset,          // Center of rotation relative to current_position
   uint8_t clockwise       // Clockwise?
 ) {
-
   float radius = hypot(offset[X_AXIS], offset[Y_AXIS]),
         center_axis0 = current_position[X_AXIS] + offset[X_AXIS],
         center_axis1 = current_position[Y_AXIS] + offset[Y_AXIS],
@@ -5227,6 +5241,13 @@ void plan_arc(
   // in any intermediate location.
   set_current_to_destination();
 }
+#else //DISABLED(COREXYUV)
+void plan_arc(
+  float target[NUM_AXIS], // Destination position
+  float* offset,          // Center of rotation relative to current_position
+  uint8_t clockwise       // Clockwise?
+) {};
+#endif // DISABLED(COREXYUV)
 
 #if HAS_CONTROLLERFAN
 

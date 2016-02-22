@@ -97,7 +97,11 @@ FORCE_INLINE uint8_t movesplanned() { return BLOCK_MOD(block_buffer_head - block
    * Add a new linear movement to the buffer. x, y, z are the signed, absolute target position in
    * millimeters. Feed rate specifies the (target) speed of the motion.
    */
-  void plan_buffer_line(float x, float y, float z, const float& e, float feed_rate, const uint8_t extruder);
+	#if DISABLED(COREXYUV)
+    void plan_buffer_line(float x, float y, float z, const float& e, float feed_rate, const uint8_t extruder);
+	#else
+    void plan_buffer_line(float x, float y, float z, const float& e, float feed_rate);
+	#endif
 
   /**
    * Set the planner positions. Used for G92 instructions.
@@ -107,9 +111,13 @@ FORCE_INLINE uint8_t movesplanned() { return BLOCK_MOD(block_buffer_head - block
   void plan_set_position(float x, float y, float z, const float& e);
 
 #else
-
-  void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder);
-  void plan_set_position(const float& x, const float& y, const float& z, const float& e);
+	#if DISABLED(COREXYUV)
+		void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder);
+		void plan_set_position(const float& x, const float& y, const float& z, const float& e);
+	#else
+		void plan_buffer_line(const float& x, const float& y, const float& u, const float& v, float feed_rate);
+		void plan_set_position(const float& x, const float& y, const float& u, const float& v);
+	#endif
 
 #endif // AUTO_BED_LEVELING_FEATURE || MESH_BED_LEVELING
 

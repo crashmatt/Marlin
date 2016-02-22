@@ -489,7 +489,11 @@ float junction_deviation = 0.1;
 #if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
   void plan_buffer_line(float x, float y, float z, const float& e, float feed_rate, const uint8_t extruder)
 #else
-  void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder)
+	#if DISABLED(COREXYUV)
+  	void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder)
+	#else
+  	void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate)
+  #endif	// DISABLED(COREXYUV)
 #endif  // AUTO_BED_LEVELING_FEATURE
 {
   // Calculate the buffer head after we push this byte
@@ -641,9 +645,8 @@ float junction_deviation = 0.1;
   #if DISABLED(COREXYUV)
   if (de < 0) db |= BIT(E_AXIS);
   block->direction_bits = db;
-  #endif
-
   block->active_extruder = extruder;
+  #endif
 
   //enable active axes
   #if ENABLED(COREXY)
@@ -1144,7 +1147,11 @@ float junction_deviation = 0.1;
 #if ENABLED(AUTO_BED_LEVELING_FEATURE) || ENABLED(MESH_BED_LEVELING)
   void plan_set_position(float x, float y, float z, const float& e)
 #else
+#if DISABLED(COREXYUV)
   void plan_set_position(const float& x, const float& y, const float& z, const float& e)
+#else //DISABLED(COREXYUV)
+  void plan_set_position(const float& x, const float& y, const float& u, const float& v)
+#endif //DISABLED(COREXYUV)
 #endif // AUTO_BED_LEVELING_FEATURE || MESH_BED_LEVELING
   {
     #if ENABLED(MESH_BED_LEVELING)
@@ -1153,19 +1160,29 @@ float junction_deviation = 0.1;
       apply_rotation_xyz(plan_bed_level_matrix, x, y, z);
     #endif
 
-    float nx = position[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]),
-          ny = position[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]),
-          nz = position[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]),
-          ne = position[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
-    st_set_position(nx, ny, nz, ne);
-    previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
+	  #if DISABLED(COREXYUV)
+			float nx = position[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]),
+						ny = position[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]),
+						nz = position[Z_AXIS] = lround(z * axis_steps_per_unit[Z_AXIS]),
+						ne = position[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
+			st_set_position(nx, ny, nz, ne);
+		#else //DISABLED(COREXYUV)
+			float nx = position[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]),
+						ny = position[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]),
+						nu = position[Z_AXIS] = lround(u * axis_steps_per_unit[U_AXIS]),
+						nv = position[E_AXIS] = lround(v * axis_steps_per_unit[V_AXIS]);
+			st_set_position(nx, ny, nu, nv);
+		#endif // DISABLED(COREXYUV)
+		previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
 
     for (int i = 0; i < NUM_AXIS; i++) previous_speed[i] = 0.0;
   }
 
 void plan_set_e_position(const float& e) {
+	#if DISABLED(COREXYUV)
   position[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
   st_set_e_position(position[E_AXIS]);
+	#endif
 }
 
 // Calculate the steps/s^2 acceleration rates, based on the mm/s^s
