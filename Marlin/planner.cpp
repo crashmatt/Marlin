@@ -1055,8 +1055,8 @@ float junction_deviation = 0.1;
   if ((moves_queued > 1) && (previous_nominal_speed > 0.0001)) {
     float dx = current_speed[X_AXIS] - previous_speed[X_AXIS],
           dy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
-		  du = current_speed[U_AXIS] - previous_speed[U_AXIS],
-		  dv = current_speed[V_AXIS] - previous_speed[V_AXIS],
+					du = current_speed[U_AXIS] - previous_speed[U_AXIS],
+					dv = current_speed[V_AXIS] - previous_speed[V_AXIS],
           jerk = max( sqrt(dx * dx + dy * dy), sqrt(du * du + dv * dv));
 
     //    if ((fabs(previous_speed[X_AXIS]) > 0.0001) || (fabs(previous_speed[Y_AXIS]) > 0.0001)) {
@@ -1169,8 +1169,8 @@ float junction_deviation = 0.1;
 		#else //DISABLED(COREXYUV)
 			float nx = position[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]),
 						ny = position[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]),
-						nu = position[Z_AXIS] = lround(u * axis_steps_per_unit[U_AXIS]),
-						nv = position[E_AXIS] = lround(v * axis_steps_per_unit[V_AXIS]);
+						nu = position[U_AXIS] = lround(u * axis_steps_per_unit[U_AXIS]),
+						nv = position[V_AXIS] = lround(v * axis_steps_per_unit[V_AXIS]);
 			st_set_position(nx, ny, nu, nv);
 		#endif // DISABLED(COREXYUV)
 		previous_nominal_speed = 0.0; // Resets planner junction speeds. Assumes start from rest.
