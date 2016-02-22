@@ -492,7 +492,7 @@ float junction_deviation = 0.1;
 	#if DISABLED(COREXYUV)
   	void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder)
 	#else
-  	void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate)
+  	void plan_buffer_line(const float& x, const float& y, const float& u, const float& v, float feed_rate)
   #endif	// DISABLED(COREXYUV)
 #endif  // AUTO_BED_LEVELING_FEATURE
 {
@@ -521,18 +521,18 @@ float junction_deviation = 0.1;
     target[E_AXIS] = lround(e * axis_steps_per_unit[E_AXIS]);
 
     float dx = target[X_AXIS] - position[X_AXIS],
-    	  dy = target[Y_AXIS] - position[Y_AXIS],
+    	  	dy = target[Y_AXIS] - position[Y_AXIS],
           dz = target[Z_AXIS] - position[Z_AXIS];
   #else	// DISABLED(COREXYUV)
     target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
     target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
-    target[U_AXIS] = lround(z * axis_steps_per_unit[U_AXIS]);
-    target[V_AXIS] = lround(e * axis_steps_per_unit[V_AXIS]);
+    target[U_AXIS] = lround(u * axis_steps_per_unit[U_AXIS]);
+    target[V_AXIS] = lround(v * axis_steps_per_unit[V_AXIS]);
 
     float dx = target[X_AXIS] - position[X_AXIS],
-    	  dy = target[Y_AXIS] - position[Y_AXIS],
-          du = target[Z_AXIS] - position[U_AXIS],
-    	  dv = target[Z_AXIS] - position[V_AXIS];
+    	  	dy = target[Y_AXIS] - position[Y_AXIS],
+          du = target[U_AXIS] - position[U_AXIS],
+					dv = target[V_AXIS] - position[V_AXIS];
   #endif //DISABLED(COREXYUV)
 
   #if DISABLED(COREXYUV)
