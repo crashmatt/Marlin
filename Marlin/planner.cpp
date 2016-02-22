@@ -644,9 +644,10 @@ float junction_deviation = 0.1;
 
   #if DISABLED(COREXYUV)
   if (de < 0) db |= BIT(E_AXIS);
-  block->direction_bits = db;
   block->active_extruder = extruder;
   #endif
+
+  block->direction_bits = db;
 
   //enable active axes
   #if ENABLED(COREXY)
@@ -958,7 +959,7 @@ float junction_deviation = 0.1;
   if ((float)acc_st * bsy / block->step_event_count > ysteps) acc_st = ysteps;
   if ((float)acc_st * bsz / block->step_event_count > zsteps) acc_st = zsteps;
   if ((float)acc_st * bse / block->step_event_count > esteps) acc_st = esteps;
-  #else
+  #else // DISABLED(COREXYUV)
   long bsx = block->steps[X_AXIS], bsy = block->steps[Y_AXIS], bsu = block->steps[U_AXIS], bsv = block->steps[V_AXIS];
   block->acceleration_st = ceil(acceleration * steps_per_mm); // convert to: acceleration steps/sec^2
   unsigned long acc_st = block->acceleration_st,
