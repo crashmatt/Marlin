@@ -335,6 +335,11 @@ inline void update_endstops() {
     // If DeltaX == -DeltaY, the movement is only in Y axis
     if ((current_block->steps[A_AXIS] != current_block->steps[B_AXIS]) || (TEST(out_bits, A_AXIS) == TEST(out_bits, B_AXIS))) {
       if (TEST(out_bits, X_HEAD))
+	#elif ENABLED(COREXYUV)
+		// Head direction in -X axis for CoreXY bots.
+		// If DeltaX == -DeltaY, the movement is only in Y axis
+		if ((current_block->steps[A_AXIS] != current_block->steps[B_AXIS]) || (TEST(out_bits, A_AXIS) == TEST(out_bits, B_AXIS))) {
+			if (TEST(out_bits, X_HEAD))
   #elif ENABLED(COREXZ)
     // Head direction in -X axis for CoreXZ bots.
     // If DeltaX == -DeltaZ, the movement is only in Z axis
@@ -365,7 +370,7 @@ inline void update_endstops() {
             #endif
           }
       }
-  #if ENABLED(COREXY) || ENABLED(COREXZ)
+  #if ENABLED(COREXY) || ENABLED(COREXZ) || ENABLED(COREXYUV)
     }
   #endif
 
@@ -374,6 +379,11 @@ inline void update_endstops() {
     // If DeltaX == DeltaY, the movement is only in X axis
     if ((current_block->steps[A_AXIS] != current_block->steps[B_AXIS]) || (TEST(out_bits, A_AXIS) != TEST(out_bits, B_AXIS))) {
       if (TEST(out_bits, Y_HEAD))
+	#elif ENABLED(COREXYUV)
+		// Head direction in -Y axis for CoreXY bots.
+		// If DeltaX == DeltaY, the movement is only in X axis
+		if ((current_block->steps[A_AXIS] != current_block->steps[B_AXIS]) || (TEST(out_bits, A_AXIS) != TEST(out_bits, B_AXIS))) {
+			if (TEST(out_bits, Y_HEAD))
   #else
       if (TEST(out_bits, Y_AXIS))   // -direction
   #endif
@@ -387,7 +397,7 @@ inline void update_endstops() {
           UPDATE_ENDSTOP(Y, MAX);
         #endif
       }
-  #if ENABLED(COREXY)
+  #if ENABLED(COREXY) || ENABLED(COREXYUV)
     }
   #endif
 
