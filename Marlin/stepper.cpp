@@ -101,27 +101,10 @@ volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
 //================================ functions ================================
 //===========================================================================
 
-#if ENABLED(DUAL_X_CARRIAGE)
-  #define X_APPLY_DIR(v,ALWAYS) \
-    if (extruder_duplication_enabled || ALWAYS) { \
-      X_DIR_WRITE(v); \
-      X2_DIR_WRITE(v); \
-    } \
-    else { \
-      if (current_block->active_extruder) X2_DIR_WRITE(v); else X_DIR_WRITE(v); \
-    }
-  #define X_APPLY_STEP(v,ALWAYS) \
-    if (extruder_duplication_enabled || ALWAYS) { \
-      X_STEP_WRITE(v); \
-      X2_STEP_WRITE(v); \
-    } \
-    else { \
-      if (current_block->active_extruder != 0) X2_STEP_WRITE(v); else X_STEP_WRITE(v); \
-    }
-#else
+
   #define X_APPLY_DIR(v,Q) X_DIR_WRITE(v)
   #define X_APPLY_STEP(v,Q) X_STEP_WRITE(v)
-#endif
+
 
 #if ENABLED(Y_DUAL_STEPPER_DRIVERS)
   #define Y_APPLY_DIR(v,Q) { Y_DIR_WRITE(v); Y2_DIR_WRITE((v) != INVERT_Y2_VS_Y_DIR); }
@@ -130,34 +113,6 @@ volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
   #define Y_APPLY_DIR(v,Q) Y_DIR_WRITE(v)
   #define Y_APPLY_STEP(v,Q) Y_STEP_WRITE(v)
 #endif
-
-#if ENABLED(Z_DUAL_STEPPER_DRIVERS)
-  #define Z_APPLY_DIR(v,Q) { Z_DIR_WRITE(v); Z2_DIR_WRITE(v); }
-  #if ENABLED(Z_DUAL_ENDSTOPS)
-    #define Z_APPLY_STEP(v,Q) \
-    if (performing_homing) { \
-      if (Z_HOME_DIR > 0) {\
-        if (!(TEST(old_endstop_bits, Z_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
-        if (!(TEST(old_endstop_bits, Z2_MAX) && (count_direction[Z_AXIS] > 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
-      } \
-      else { \
-        if (!(TEST(old_endstop_bits, Z_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z_motor) Z_STEP_WRITE(v); \
-        if (!(TEST(old_endstop_bits, Z2_MIN) && (count_direction[Z_AXIS] < 0)) && !locked_z2_motor) Z2_STEP_WRITE(v); \
-      } \
-    } \
-    else { \
-      Z_STEP_WRITE(v); \
-      Z2_STEP_WRITE(v); \
-    }
-  #else
-    #define Z_APPLY_STEP(v,Q) { Z_STEP_WRITE(v); Z2_STEP_WRITE(v); }
-  #endif
-#else
-  #define Z_APPLY_DIR(v,Q) Z_DIR_WRITE(v)
-  #define Z_APPLY_STEP(v,Q) Z_STEP_WRITE(v)
-#endif
-
-#define E_APPLY_STEP(v,Q) E_STEP_WRITE(v)
 
 // intRes = intIn1 * intIn2 >> 16
 // uses:
@@ -324,11 +279,6 @@ inline void update_endstops() {
     // If DeltaX == -DeltaY, the movement is only in Y axis
     if ((current_block->steps[A_AXIS] != current_block->steps[B_AXIS]) || (TEST(out_bits, A_AXIS) == TEST(out_bits, B_AXIS))) {
       if (TEST(out_bits, X_HEAD))
-  #elif ENABLED(COREXZ)
-    // Head direction in -X axis for CoreXZ bots.
-    // If DeltaX == -DeltaZ, the movement is only in Z axis
-    if ((current_block->steps[A_AXIS] != current_block->steps[C_AXIS]) || (TEST(out_bits, A_AXIS) == TEST(out_bits, C_AXIS))) {
-      if (TEST(out_bits, X_HEAD))
   #else
     if (TEST(out_bits, X_AXIS))   // stepping along -X axis (regular Cartesian bot)
   #endif
@@ -380,80 +330,6 @@ inline void update_endstops() {
     }
   #endif
 
-  #if ENABLED(COREXZ)
-    // Head direction in -Z axis for CoreXZ bots.
-    // If DeltaX == DeltaZ, the movement is only in X axis
-    if ((current_block->steps[A_AXIS] != current_block->steps[C_AXIS]) || (TEST(out_bits, A_AXIS) != TEST(out_bits, C_AXIS))) {
-      if (TEST(out_bits, Z_HEAD))
-  #else
-      if (TEST(out_bits, Z_AXIS))
-  #endif
-      { // z -direction
-        #if HAS_Z_MIN
-
-          #if ENABLED(Z_DUAL_ENDSTOPS)
-            SET_ENDSTOP_BIT(Z, MIN);
-            #if HAS_Z2_MIN
-              SET_ENDSTOP_BIT(Z2, MIN);
-            #else
-              COPY_BIT(current_endstop_bits, Z_MIN, Z2_MIN);
-            #endif
-
-            byte z_test = TEST_ENDSTOP(Z_MIN) | (TEST_ENDSTOP(Z2_MIN) << 1); // bit 0 for Z, bit 1 for Z2
-
-            if (z_test && current_block->steps[Z_AXIS] > 0) { // z_test = Z_MIN || Z2_MIN
-              endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
-              endstop_hit_bits |= BIT(Z_MIN);
-              if (!performing_homing || (z_test == 0x3))  //if not performing home or if both endstops were trigged during homing...
-                step_events_completed = current_block->step_event_count;
-            }
-          #else // !Z_DUAL_ENDSTOPS
-
-            UPDATE_ENDSTOP(Z, MIN);
-
-          #endif // !Z_DUAL_ENDSTOPS
-        #endif // Z_MIN_PIN
-
-        #if ENABLED(Z_MIN_PROBE_ENDSTOP)
-          UPDATE_ENDSTOP(Z, MIN_PROBE);
-
-          if (TEST_ENDSTOP(Z_MIN_PROBE)) {
-            endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
-            endstop_hit_bits |= BIT(Z_MIN_PROBE);
-          }
-        #endif
-      }
-      else { // z +direction
-        #if HAS_Z_MAX
-
-          #if ENABLED(Z_DUAL_ENDSTOPS)
-
-            SET_ENDSTOP_BIT(Z, MAX);
-            #if HAS_Z2_MAX
-              SET_ENDSTOP_BIT(Z2, MAX);
-            #else
-              COPY_BIT(current_endstop_bits, Z_MAX, Z2_MAX);
-            #endif
-
-            byte z_test = TEST_ENDSTOP(Z_MAX) | (TEST_ENDSTOP(Z2_MAX) << 1); // bit 0 for Z, bit 1 for Z2
-
-            if (z_test && current_block->steps[Z_AXIS] > 0) {  // t_test = Z_MAX || Z2_MAX
-              endstops_trigsteps[Z_AXIS] = count_position[Z_AXIS];
-              endstop_hit_bits |= BIT(Z_MIN);
-              if (!performing_homing || (z_test == 0x3))  //if not performing home or if both endstops were trigged during homing...
-                step_events_completed = current_block->step_event_count;
-            }
-
-          #else // !Z_DUAL_ENDSTOPS
-
-            UPDATE_ENDSTOP(Z, MAX);
-
-          #endif // !Z_DUAL_ENDSTOPS
-        #endif // Z_MAX_PIN
-      }
-  #if ENABLED(COREXZ)
-    }
-  #endif
   old_endstop_bits = current_endstop_bits;
 }
 
@@ -538,26 +414,6 @@ void set_stepper_direction() {
     Y_APPLY_DIR(!INVERT_Y_DIR, 0);
     count_direction[Y_AXIS] = 1;
   }
-
-  if (TEST(out_bits, Z_AXIS)) { // C_AXIS
-    Z_APPLY_DIR(INVERT_Z_DIR, 0);
-    count_direction[Z_AXIS] = -1;
-  }
-  else {
-    Z_APPLY_DIR(!INVERT_Z_DIR, 0);
-    count_direction[Z_AXIS] = 1;
-  }
-
-  #if DISABLED(ADVANCE)
-    if (TEST(out_bits, E_AXIS)) {
-      REV_E_DIR();
-      count_direction[E_AXIS] = -1;
-    }
-    else {
-      NORM_E_DIR();
-      count_direction[E_AXIS] = 1;
-    }
-  #endif //!ADVANCE
 }
 
 // Initializes the trapezoid generator from the current block. Called whenever a new
@@ -569,13 +425,6 @@ FORCE_INLINE void trapezoid_generator_reset() {
     set_stepper_direction();
   }
 
-  #if ENABLED(ADVANCE)
-    advance = current_block->initial_advance;
-    final_advance = current_block->final_advance;
-    // Do E steps + advance steps
-    e_steps[current_block->active_extruder] += ((advance >>8) - old_advance);
-    old_advance = advance >>8;
-  #endif
   deceleration_time = 0;
   // step_rate to timer interval
   OCR1A_nominal = calc_timer(current_block->nominal_rate);
@@ -622,17 +471,6 @@ ISR(TIMER1_COMPA_vect) {
       counter_y = counter_z = counter_e = counter_x;
       step_events_completed = 0;
 
-      #if ENABLED(Z_LATE_ENABLE)
-        if (current_block->steps[Z_AXIS] > 0) {
-          enable_z();
-          OCR1A = 2000; //1ms wait
-          return;
-        }
-      #endif
-
-      // #if ENABLED(ADVANCE)
-      //   e_steps[current_block->active_extruder] = 0;
-      // #endif
     }
     else {
       OCR1A = 2000; // 1kHz.
@@ -650,14 +488,6 @@ ISR(TIMER1_COMPA_vect) {
         customizedSerial.checkRx(); // Check for serial chars.
       #endif
 
-      #if ENABLED(ADVANCE)
-        counter_e += current_block->steps[E_AXIS];
-        if (counter_e > 0) {
-          counter_e -= current_block->step_event_count;
-          e_steps[current_block->active_extruder] += TEST(out_bits, E_AXIS) ? -1 : 1;
-        }
-      #endif //ADVANCE
-
       #define _COUNTER(axis) counter_## axis
       #define _APPLY_STEP(AXIS) AXIS ##_APPLY_STEP
       #define _INVERT_STEP_PIN(AXIS) INVERT_## AXIS ##_STEP_PIN
@@ -668,10 +498,6 @@ ISR(TIMER1_COMPA_vect) {
 
       STEP_ADD(x,X);
       STEP_ADD(y,Y);
-      STEP_ADD(z,Z);
-      #if DISABLED(ADVANCE)
-        STEP_ADD(e,E);
-      #endif
 
       #define STEP_IF_COUNTER(axis, AXIS) \
         if (_COUNTER(axis) > 0) { \
@@ -682,10 +508,6 @@ ISR(TIMER1_COMPA_vect) {
 
       STEP_IF_COUNTER(x, X);
       STEP_IF_COUNTER(y, Y);
-      STEP_IF_COUNTER(z, Z);
-      #if DISABLED(ADVANCE)
-        STEP_IF_COUNTER(e, E);
-      #endif
 
       step_events_completed++;
       if (step_events_completed >= current_block->step_event_count) break;
@@ -707,17 +529,6 @@ ISR(TIMER1_COMPA_vect) {
       OCR1A = timer;
       acceleration_time += timer;
 
-      #if ENABLED(ADVANCE)
-
-        for (int8_t i = 0; i < step_loops; i++) {
-          advance += advance_rate;
-        }
-        //if (advance > current_block->advance) advance = current_block->advance;
-        // Do E steps + advance steps
-        e_steps[current_block->active_extruder] += ((advance >> 8) - old_advance);
-        old_advance = advance >> 8;
-
-      #endif //ADVANCE
     }
     else if (step_events_completed > (unsigned long)current_block->decelerate_after) {
       MultiU24X32toH16(step_rate, deceleration_time, current_block->acceleration_rate);
@@ -737,15 +548,6 @@ ISR(TIMER1_COMPA_vect) {
       timer = calc_timer(step_rate);
       OCR1A = timer;
       deceleration_time += timer;
-      #if ENABLED(ADVANCE)
-        for (int8_t i = 0; i < step_loops; i++) {
-          advance -= advance_rate;
-        }
-        if (advance < final_advance) advance = final_advance;
-        // Do E steps + advance steps
-        e_steps[current_block->active_extruder] += ((advance >> 8) - old_advance);
-        old_advance = advance >> 8;
-      #endif //ADVANCE
     }
     else {
       OCR1A = OCR1A_nominal;
@@ -763,76 +565,6 @@ ISR(TIMER1_COMPA_vect) {
   }
 }
 
-#if ENABLED(ADVANCE)
-  unsigned char old_OCR0A;
-  // Timer interrupt for E. e_steps is set in the main routine;
-  // Timer 0 is shared with millies
-  ISR(TIMER0_COMPA_vect) {
-    old_OCR0A += 52; // ~10kHz interrupt (250000 / 26 = 9615kHz)
-    OCR0A = old_OCR0A;
-    // Set E direction (Depends on E direction + advance)
-    for (unsigned char i = 0; i < 4; i++) {
-      if (e_steps[0] != 0) {
-        E0_STEP_WRITE(INVERT_E_STEP_PIN);
-        if (e_steps[0] < 0) {
-          E0_DIR_WRITE(INVERT_E0_DIR);
-          e_steps[0]++;
-          E0_STEP_WRITE(!INVERT_E_STEP_PIN);
-        }
-        else if (e_steps[0] > 0) {
-          E0_DIR_WRITE(!INVERT_E0_DIR);
-          e_steps[0]--;
-          E0_STEP_WRITE(!INVERT_E_STEP_PIN);
-        }
-      }
-      #if EXTRUDERS > 1
-        if (e_steps[1] != 0) {
-          E1_STEP_WRITE(INVERT_E_STEP_PIN);
-          if (e_steps[1] < 0) {
-            E1_DIR_WRITE(INVERT_E1_DIR);
-            e_steps[1]++;
-            E1_STEP_WRITE(!INVERT_E_STEP_PIN);
-          }
-          else if (e_steps[1] > 0) {
-            E1_DIR_WRITE(!INVERT_E1_DIR);
-            e_steps[1]--;
-            E1_STEP_WRITE(!INVERT_E_STEP_PIN);
-          }
-        }
-      #endif
-      #if EXTRUDERS > 2
-        if (e_steps[2] != 0) {
-          E2_STEP_WRITE(INVERT_E_STEP_PIN);
-          if (e_steps[2] < 0) {
-            E2_DIR_WRITE(INVERT_E2_DIR);
-            e_steps[2]++;
-            E2_STEP_WRITE(!INVERT_E_STEP_PIN);
-          }
-          else if (e_steps[2] > 0) {
-            E2_DIR_WRITE(!INVERT_E2_DIR);
-            e_steps[2]--;
-            E2_STEP_WRITE(!INVERT_E_STEP_PIN);
-          }
-        }
-      #endif
-      #if EXTRUDERS > 3
-        if (e_steps[3] != 0) {
-          E3_STEP_WRITE(INVERT_E_STEP_PIN);
-          if (e_steps[3] < 0) {
-            E3_DIR_WRITE(INVERT_E3_DIR);
-            e_steps[3]++;
-            E3_STEP_WRITE(!INVERT_E_STEP_PIN);
-          }
-          else if (e_steps[3] > 0) {
-            E3_DIR_WRITE(!INVERT_E3_DIR);
-            e_steps[3]--;
-            E3_STEP_WRITE(!INVERT_E_STEP_PIN);
-          }
-        }
-      #endif
-    }
-  }
-#endif // ADVANCE
 
 void st_init() {
   digipot_init(); //Initialize Digipot Motor Current
@@ -860,24 +592,6 @@ void st_init() {
       Y2_DIR_INIT;
     #endif
   #endif
-  #if HAS_Z_DIR
-    Z_DIR_INIT;
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_DIR
-      Z2_DIR_INIT;
-    #endif
-  #endif
-  #if HAS_E0_DIR
-    E0_DIR_INIT;
-  #endif
-  #if HAS_E1_DIR
-    E1_DIR_INIT;
-  #endif
-  #if HAS_E2_DIR
-    E2_DIR_INIT;
-  #endif
-  #if HAS_E3_DIR
-    E3_DIR_INIT;
-  #endif
 
   //Initialize Enable Pins - steppers default to disabled.
 
@@ -898,31 +612,7 @@ void st_init() {
     if (!Y_ENABLE_ON) Y2_ENABLE_WRITE(HIGH);
   #endif
   #endif
-  #if HAS_Z_ENABLE
-    Z_ENABLE_INIT;
-    if (!Z_ENABLE_ON) Z_ENABLE_WRITE(HIGH);
 
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_ENABLE
-      Z2_ENABLE_INIT;
-      if (!Z_ENABLE_ON) Z2_ENABLE_WRITE(HIGH);
-    #endif
-  #endif
-  #if HAS_E0_ENABLE
-    E0_ENABLE_INIT;
-    if (!E_ENABLE_ON) E0_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_E1_ENABLE
-    E1_ENABLE_INIT;
-    if (!E_ENABLE_ON) E1_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_E2_ENABLE
-    E2_ENABLE_INIT;
-    if (!E_ENABLE_ON) E2_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_E3_ENABLE
-    E3_ENABLE_INIT;
-    if (!E_ENABLE_ON) E3_ENABLE_WRITE(HIGH);
-  #endif
 
   //endstops and pullups
 
@@ -1007,25 +697,6 @@ void st_init() {
     #endif
     AXIS_INIT(y, Y, Y);
   #endif
-  #if HAS_Z_STEP
-    #if ENABLED(Z_DUAL_STEPPER_DRIVERS) && HAS_Z2_STEP
-      Z2_STEP_INIT;
-      Z2_STEP_WRITE(INVERT_Z_STEP_PIN);
-    #endif
-    AXIS_INIT(z, Z, Z);
-  #endif
-  #if HAS_E0_STEP
-    E_AXIS_INIT(0);
-  #endif
-  #if HAS_E1_STEP
-    E_AXIS_INIT(1);
-  #endif
-  #if HAS_E2_STEP
-    E_AXIS_INIT(2);
-  #endif
-  #if HAS_E3_STEP
-    E_AXIS_INIT(3);
-  #endif
 
   // waveform generation = 0100 = CTC
   TCCR1B &= ~BIT(WGM13);
@@ -1072,8 +743,8 @@ void st_set_position(const long& x, const long& y, const long& z, const long& e)
   CRITICAL_SECTION_START;
   count_position[X_AXIS] = x;
   count_position[Y_AXIS] = y;
-  count_position[Z_AXIS] = z;
-  count_position[E_AXIS] = e;
+  count_position[Z_AXIS] = 0;
+  count_position[E_AXIS] = 0;
   CRITICAL_SECTION_END;
 }
 
@@ -1136,43 +807,6 @@ void quickStop() {
       case Y_AXIS:
         BABYSTEP_AXIS(y, Y, false);
         break;
-
-      case Z_AXIS: {
-
-        #if DISABLED(DELTA)
-
-          BABYSTEP_AXIS(z, Z, BABYSTEP_INVERT_Z);
-
-        #else // DELTA
-
-          bool z_direction = direction ^ BABYSTEP_INVERT_Z;
-
-          enable_x();
-          enable_y();
-          enable_z();
-          uint8_t old_x_dir_pin = X_DIR_READ,
-                  old_y_dir_pin = Y_DIR_READ,
-                  old_z_dir_pin = Z_DIR_READ;
-          //setup new step
-          X_DIR_WRITE(INVERT_X_DIR ^ z_direction);
-          Y_DIR_WRITE(INVERT_Y_DIR ^ z_direction);
-          Z_DIR_WRITE(INVERT_Z_DIR ^ z_direction);
-          //perform step
-          X_STEP_WRITE(!INVERT_X_STEP_PIN);
-          Y_STEP_WRITE(!INVERT_Y_STEP_PIN);
-          Z_STEP_WRITE(!INVERT_Z_STEP_PIN);
-          delayMicroseconds(2);
-          X_STEP_WRITE(INVERT_X_STEP_PIN);
-          Y_STEP_WRITE(INVERT_Y_STEP_PIN);
-          Z_STEP_WRITE(INVERT_Z_STEP_PIN);
-          //get old pin state back.
-          X_DIR_WRITE(old_x_dir_pin);
-          Y_DIR_WRITE(old_y_dir_pin);
-          Z_DIR_WRITE(old_z_dir_pin);
-
-        #endif
-
-      } break;
 
       default: break;
     }
