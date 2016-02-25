@@ -414,13 +414,6 @@ void check_axes_activity() {
   }
   if (DISABLE_X && !axis_active[X_AXIS]) disable_x();
   if (DISABLE_Y && !axis_active[Y_AXIS]) disable_y();
-  if (DISABLE_Z && !axis_active[Z_AXIS]) disable_z();
-  if (DISABLE_E && !axis_active[E_AXIS]) {
-    disable_e0();
-    disable_e1();
-    disable_e2();
-    disable_e3();
-  }
 
   #if HAS_FAN
     #ifdef FAN_KICKSTART_TIME
@@ -529,7 +522,7 @@ float junction_deviation = 0.1;
     // default non-h-bot planning
     block->steps[X_AXIS] = labs(dx);
     block->steps[Y_AXIS] = labs(dy);
-    block->steps[Z_AXIS] = labs(dz);
+    block->steps[Z_AXIS] = 0;
   #endif
 
   block->steps[E_AXIS] = 0;

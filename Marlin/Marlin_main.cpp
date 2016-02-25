@@ -2724,15 +2724,6 @@ inline void gcode_M18_M84() {
       st_synchronize();
       if (code_seen('X')) disable_x();
       if (code_seen('Y')) disable_y();
-      if (code_seen('Z')) disable_z();
-      #if ((E0_ENABLE_PIN != X_ENABLE_PIN) && (E1_ENABLE_PIN != Y_ENABLE_PIN)) // Only enable on boards that have seperate ENABLE_PINS
-        if (code_seen('E')) {
-          disable_e0();
-          disable_e1();
-          disable_e2();
-          disable_e3();
-        }
-      #endif
     }
   }
 }
@@ -5278,9 +5269,7 @@ void enable_all_steppers() {
 void disable_all_steppers() {
   disable_x();
   disable_y();
-  disable_z();
-  disable_e0();
-}
+	}
 
 /**
  * Standard idle routine keeps the machine alive
@@ -5370,17 +5359,6 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
 
   #if HAS_CONTROLLERFAN
     controllerFan(); // Check if fan should be turned on to cool stepper drivers down
-  #endif
-
-
-  #if ENABLED(DUAL_X_CARRIAGE)
-    // handle delayed move timeout
-    if (delayed_move_time && ms > delayed_move_time + 1000 && IsRunning()) {
-      // travel moves have been received so enact them
-      delayed_move_time = 0xFFFFFFFFUL; // force moves to be done
-      set_destination_to_current();
-      prepare_move();
-    }
   #endif
 
   #if ENABLED(TEMP_STAT_LEDS)
