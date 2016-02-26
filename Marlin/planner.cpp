@@ -517,8 +517,9 @@ float junction_deviation = 0.1;
     block->steps[V_AXIS] = labs(dv);
   #endif
 
-    //TODO: Change this
-  block->step_event_count = max(block->steps[X_AXIS], block->steps[Y_AXIS]);
+  block->step_event_count = max(block->steps[X_AXIS],
+  														max(block->steps[Y_AXIS],
+  																max(block->steps[U_AXIS],block->steps[V_AXIS])));
 
   // Bail if this is a zero-length block
   if (block->step_event_count <= dropsegments) return;
@@ -581,17 +582,17 @@ float junction_deviation = 0.1;
     delta_mm[V_AXIS] = dv / axis_steps_per_unit[V_AXIS];
   #endif
 
-//  if (block->steps[X_AXIS] <= dropsegments && block->steps[Y_AXIS] <= dropsegments ) {
-//    block->millimeters = fabs(delta_mm[E_AXIS]);
-//  }
-//  else {
-    block->millimeters = sqrt(
-      #if ENABLED(COREXY)
-        square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD]));
-      #else
-        square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]));
-      #endif
-//  }
+
+  block->millimeters = sqrt(
+	#if ENABLED(COREXY)
+		max( square(delta_mm[X_HEAD]) + square(delta_mm[Y_HEAD]),
+					 square(delta_mm[U_HEAD]) + square(delta_mm[V_HEAD]) )
+	#else
+		max( square(delta_mm[X_AXIS]) + square(delta_mm[Y_AXIS]),
+				 square(delta_mm[U_AXIS]) + square(delta_mm[V_AXIS]) )
+	#endif
+		);
+
   float inverse_millimeters = 1.0 / block->millimeters;  // Inverse millimeters to remove multiple divides
 
   // Calculate speed in mm/second for each axis. No divide by zero due to previous checks.
@@ -672,7 +673,7 @@ float junction_deviation = 0.1;
           dy = current_speed[Y_AXIS] - previous_speed[Y_AXIS],
           du = current_speed[U_AXIS] - previous_speed[U_AXIS],
           dv = current_speed[V_AXIS] - previous_speed[V_AXIS],
-          jerk = sqrt(dx * dx + dy * dy);
+          jerk = max( sqrt(dx*dx + dy*dy), sqrt(du*du + dv*dv));
 
     //    if ((fabs(previous_speed[X_AXIS]) > 0.0001) || (fabs(previous_speed[Y_AXIS]) > 0.0001)) {
     vmax_junction = block->nominal_speed;
