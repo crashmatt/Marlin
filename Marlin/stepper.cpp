@@ -114,6 +114,12 @@ volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
   #define Y_APPLY_STEP(v,Q) Y_STEP_WRITE(v)
 #endif
 
+#define U_APPLY_DIR(v,Q) U_DIR_WRITE(v)
+#define U_APPLY_STEP(v,Q) U_STEP_WRITE(v)
+
+#define V_APPLY_DIR(v,Q) V_DIR_WRITE(v)
+#define V_APPLY_STEP(v,Q) V_STEP_WRITE(v)
+
 // intRes = intIn1 * intIn2 >> 16
 // uses:
 // r26 to store 0
@@ -412,6 +418,24 @@ void set_stepper_direction() {
     Y_APPLY_DIR(!INVERT_Y_DIR, 0);
     count_direction[Y_AXIS] = 1;
   }
+
+  if (TEST(out_bits, U_AXIS)) { // C_AXIS
+    U_APPLY_DIR(INVERT_U_DIR, 0);
+    count_direction[U_AXIS] = -1;
+  }
+  else {
+    U_APPLY_DIR(!INVERT_U_DIR, 0);
+    count_direction[U_AXIS] = 1;
+  }
+
+  if (TEST(out_bits, V_AXIS)) { // D_AXIS
+    V_APPLY_DIR(INVERT_V_DIR, 0);
+    count_direction[V_AXIS] = -1;
+  }
+  else {
+    V_APPLY_DIR(!INVERT_V_DIR, 0);
+    count_direction[V_AXIS] = 1;
+  }
 }
 
 // Initializes the trapezoid generator from the current block. Called whenever a new
@@ -581,15 +605,18 @@ void st_init() {
   #if HAS_X_DIR
     X_DIR_INIT;
   #endif
-  #if HAS_X2_DIR
-    X2_DIR_INIT;
-  #endif
-  #if HAS_Y_DIR
-    Y_DIR_INIT;
-    #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_DIR
-      Y2_DIR_INIT;
-    #endif
-  #endif
+	#if HAS_Y_DIR
+		Y_DIR_INIT;
+		#if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_DIR
+			Y2_DIR_INIT;
+		#endif
+	#endif
+	#if HAS_U_DIR
+		U_DIR_INIT;
+	#endif
+	#if HAS_V_DIR
+		V_DIR_INIT;
+	#endif
 
   //Initialize Enable Pins - steppers default to disabled.
 
@@ -597,19 +624,18 @@ void st_init() {
     X_ENABLE_INIT;
     if (!X_ENABLE_ON) X_ENABLE_WRITE(HIGH);
   #endif
-  #if HAS_X2_ENABLE
-    X2_ENABLE_INIT;
-    if (!X_ENABLE_ON) X2_ENABLE_WRITE(HIGH);
-  #endif
-  #if HAS_Y_ENABLE
-    Y_ENABLE_INIT;
-    if (!Y_ENABLE_ON) Y_ENABLE_WRITE(HIGH);
-
-  #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_ENABLE
-    Y2_ENABLE_INIT;
-    if (!Y_ENABLE_ON) Y2_ENABLE_WRITE(HIGH);
-  #endif
-  #endif
+	#if HAS_Y_ENABLE
+		Y_ENABLE_INIT;
+		if (!Y_ENABLE_ON) Y_ENABLE_WRITE(HIGH);
+	#endif
+	#if HAS_U_ENABLE
+		U_ENABLE_INIT;
+		if (!U_ENABLE_ON) U_ENABLE_WRITE(HIGH);
+	#endif
+	#if HAS_V_ENABLE
+		V_ENABLE_INIT;
+		if (!V_ENABLE_ON) V_ENABLE_WRITE(HIGH);
+	#endif
 
 
   //endstops and pullups
@@ -628,12 +654,19 @@ void st_init() {
     #endif
   #endif
 
-  #if HAS_Z_MIN
-    SET_INPUT(Z_MIN_PIN);
-    #if ENABLED(ENDSTOPPULLUP_ZMIN)
-      WRITE(Z_MIN_PIN,HIGH);
-    #endif
-  #endif
+	#if HAS_U_MIN
+		SET_INPUT(U_MIN_PIN);
+		#if ENABLED(ENDSTOPPULLUP_YMIN)
+			WRITE(U_MIN_PIN,HIGH);
+		#endif
+	#endif
+
+	#if HAS_V_MIN
+		SET_INPUT(V_MIN_PIN);
+		#if ENABLED(ENDSTOPPULLUP_YMIN)
+			WRITE(V_MIN_PIN,HIGH);
+		#endif
+	#endif
 
   #if HAS_X_MAX
     SET_INPUT(X_MAX_PIN);
@@ -649,26 +682,19 @@ void st_init() {
     #endif
   #endif
 
-  #if HAS_Z_MAX
-    SET_INPUT(Z_MAX_PIN);
-    #if ENABLED(ENDSTOPPULLUP_ZMAX)
-      WRITE(Z_MAX_PIN,HIGH);
-    #endif
-  #endif
+	#if HAS_U_MAX
+		SET_INPUT(U_MAX_PIN);
+		#if ENABLED(ENDSTOPPULLUP_YMAX)
+			WRITE(U_MAX_PIN,HIGH);
+		#endif
+	#endif
 
-  #if HAS_Z2_MAX
-    SET_INPUT(Z2_MAX_PIN);
-    #if ENABLED(ENDSTOPPULLUP_ZMAX)
-      WRITE(Z2_MAX_PIN,HIGH);
-    #endif
-  #endif
-
-  #if HAS_Z_PROBE && ENABLED(Z_MIN_PROBE_ENDSTOP) // Check for Z_MIN_PROBE_ENDSTOP so we don't pull a pin high unless it's to be used.
-    SET_INPUT(Z_MIN_PROBE_PIN);
-    #if ENABLED(ENDSTOPPULLUP_ZMIN_PROBE)
-      WRITE(Z_MIN_PROBE_PIN,HIGH);
-    #endif
-  #endif
+	#if HAS_V_MAX
+		SET_INPUT(V_MAX_PIN);
+		#if ENABLED(ENDSTOPPULLUP_YMAX)
+			WRITE(V_MAX_PIN,HIGH);
+		#endif
+	#endif
 
   #define _STEP_INIT(AXIS) AXIS ##_STEP_INIT
   #define _WRITE_STEP(AXIS, HIGHLOW) AXIS ##_STEP_WRITE(HIGHLOW)
@@ -679,22 +705,23 @@ void st_init() {
     _WRITE_STEP(AXIS, _INVERT_STEP_PIN(PIN)); \
     _DISABLE(axis)
 
-  #define E_AXIS_INIT(NUM) AXIS_INIT(e## NUM, E## NUM, E)
-
   // Initialize Step Pins
   #if HAS_X_STEP
     AXIS_INIT(x, X, X);
   #endif
-  #if HAS_X2_STEP
-    AXIS_INIT(x, X2, X);
-  #endif
   #if HAS_Y_STEP
+    AXIS_INIT(y, Y, Y);
     #if ENABLED(Y_DUAL_STEPPER_DRIVERS) && HAS_Y2_STEP
       Y2_STEP_INIT;
       Y2_STEP_WRITE(INVERT_Y_STEP_PIN);
     #endif
-    AXIS_INIT(y, Y, Y);
   #endif
+	#if HAS_U_STEP
+		AXIS_INIT(u, U, U);
+	#endif
+	#if HAS_V_STEP
+		AXIS_INIT(v, V, V);
+	#endif
 
   // waveform generation = 0100 = CTC
   TCCR1B &= ~BIT(WGM13);
@@ -737,17 +764,17 @@ void st_init() {
  */
 void st_synchronize() { while (blocks_queued()) idle(); }
 
-void st_set_position(const long& x, const long& y, const long& z, const long& e) {
+void st_set_position(const long& x, const long& y, const long& u, const long& v) {
   CRITICAL_SECTION_START;
   count_position[X_AXIS] = x;
   count_position[Y_AXIS] = y;
-  count_position[U_AXIS] = 0;
-  count_position[V_AXIS] = 0;
+  count_position[U_AXIS] = u;
+  count_position[V_AXIS] = v;
   CRITICAL_SECTION_END;
 }
 
-void st_set_e_position(const long& e) {
-}
+//void st_set_e_position(const long& e) {
+//}
 
 long st_get_position(uint8_t axis) {
   long count_pos;

@@ -104,12 +104,12 @@ FORCE_INLINE uint8_t movesplanned() { return BLOCK_MOD(block_buffer_head - block
    * Multiplies by axis_steps_per_unit[] to set stepper positions.
    * Clears previous speed values.
    */
-  void plan_set_position(float x, float y, float z, const float& e);
+  void plan_set_position(float x, float y, float u, const float& v);
 
 #else
 
-  void plan_buffer_line(const float& x, const float& y, const float& z, const float& e, float feed_rate, const uint8_t extruder);
-  void plan_set_position(const float& x, const float& y, const float& z, const float& e);
+  void plan_buffer_line(const float& x, const float& y, const float& u, const float& v, float feed_rate, const uint8_t extruder);
+  void plan_set_position(const float& x, const float& y, const float& u, const float& v);
 
 #endif // AUTO_BED_LEVELING_FEATURE || MESH_BED_LEVELING
 
