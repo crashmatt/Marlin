@@ -287,26 +287,14 @@ inline void update_endstops() {
     if (TEST(out_bits, X_AXIS))   // stepping along -X axis (regular Cartesian bot)
   #endif
       { // -direction
-        #if ENABLED(DUAL_X_CARRIAGE)
-          // with 2 x-carriages, endstops are only checked in the homing direction for the active extruder
-          if ((current_block->active_extruder == 0 && X_HOME_DIR == -1) || (current_block->active_extruder != 0 && X2_HOME_DIR == -1))
-        #endif
-          {
-            #if HAS_X_MIN
-              UPDATE_ENDSTOP(X, MIN);
-            #endif
-          }
+				#if HAS_X_MIN
+					UPDATE_ENDSTOP(X, MIN);
+				#endif
       }
       else { // +direction
-        #if ENABLED(DUAL_X_CARRIAGE)
-          // with 2 x-carriages, endstops are only checked in the homing direction for the active extruder
-          if ((current_block->active_extruder == 0 && X_HOME_DIR == 1) || (current_block->active_extruder != 0 && X2_HOME_DIR == 1))
-        #endif
-          {
-            #if HAS_X_MAX
-              UPDATE_ENDSTOP(X, MAX);
-            #endif
-          }
+				#if HAS_X_MAX
+					UPDATE_ENDSTOP(X, MAX);
+				#endif
       }
   #if ENABLED(COREXY) || ENABLED(COREXZ)
     }
@@ -333,6 +321,56 @@ inline void update_endstops() {
   #if ENABLED(COREXY)
     }
   #endif
+
+
+
+
+#if ENABLED(COREXY)
+  // Head direction in -X axis for CoreXY bots.
+  // If DeltaX == -DeltaY, the movement is only in Y axis
+  if ((current_block->steps[C_AXIS] != current_block->steps[D_AXIS]) || (TEST(out_bits, C_AXIS) == TEST(out_bits, D_AXIS))) {
+    if (TEST(out_bits, U_HEAD))
+#else
+  if (TEST(out_bits, U_AXIS))   // stepping along -X axis (regular Cartesian bot)
+#endif
+    { // -direction
+			#if HAS_U_MIN
+				UPDATE_ENDSTOP(U, MIN);
+			#endif
+    }
+    else { // +direction
+			#if HAS_U_MAX
+				UPDATE_ENDSTOP(U, MAX);
+			#endif
+    }
+#if ENABLED(COREXY) || ENABLED(COREXZ)
+  }
+#endif
+
+#if ENABLED(COREXY)
+  // Head direction in -Y axis for CoreXY bots.
+  // If DeltaX == DeltaY, the movement is only in X axis
+  if ((current_block->steps[C_AXIS] != current_block->steps[D_AXIS]) || (TEST(out_bits, C_AXIS) != TEST(out_bits, D_AXIS))) {
+    if (TEST(out_bits, V_HEAD))
+#else
+    if (TEST(out_bits, V_AXIS))   // -direction
+#endif
+    { // -direction
+      #if HAS_V_MIN
+        UPDATE_ENDSTOP(V, MIN);
+      #endif
+    }
+    else { // +direction
+      #if HAS_V_MAX
+        UPDATE_ENDSTOP(V, MAX);
+      #endif
+    }
+#if ENABLED(COREXY)
+  }
+#endif
+
+
+
 
   old_endstop_bits = current_endstop_bits;
 }
