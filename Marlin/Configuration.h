@@ -67,7 +67,7 @@ Here are some standard links for getting your machine calibrated:
 // Enable the Bluetooth serial interface on AT90USB devices
 //#define BLUETOOTH
 
-#define MOTHERBOARD 35
+#define MOTHERBOARD BOARD_RAMPS_14_XYUV
 
 // The following define selects which electronics board you have.
 // Please choose the name from boards.h that matches your setup
@@ -366,14 +366,15 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 // :{0:'Low',1:'High'}
 #define X_ENABLE_ON 0
 #define Y_ENABLE_ON 0
-#define Z_ENABLE_ON 0
-#define E_ENABLE_ON 0 // For all extruders
+#define U_ENABLE_ON 0
+#define V_ENABLE_ON 0
 
 // Disables axis when it's not being used.
 // WARNING: When motors turn off there is a chance of losing position accuracy!
 #define DISABLE_X false
 #define DISABLE_Y false
-#define DISABLE_Z true
+#define DISABLE_U false
+#define DISABLE_V false
 
 // @section extruder
 
@@ -383,26 +384,21 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 // @section machine
 
 // Invert the stepper direction. Change (or reverse the motor connector) if an axis goes the wrong way.
-#define INVERT_X_DIR true		//
-#define INVERT_Y_DIR true   	// cutter
-#define INVERT_Z_DIR false
+#define INVERT_X_DIR true
+#define INVERT_Y_DIR true
+#define INVERT_U_DIR false
+#define INVERT_V_DIR false
 
-// @section extruder
-
-// For direct drive extruder v9 set to true, for geared extruder set to false.
-#define INVERT_E0_DIR false   // K8200 belt extruder
-#define INVERT_E1_DIR false
-#define INVERT_E2_DIR false
-#define INVERT_E3_DIR false
 
 // @section homing
 
 // ENDSTOP SETTINGS:
 // Sets direction of endstops when homing; 1=MAX, -1=MIN
 // :[-1,1]
-#define X_HOME_DIR -1	// cutter
-#define Y_HOME_DIR 1	// cutter
-#define Z_HOME_DIR -1
+#define X_HOME_DIR -1
+#define Y_HOME_DIR 1
+#define U_HOME_DIR -1
+#define V_HOME_DIR 1
 
 #define min_software_endstops true // If true, axis won't move to coordinates less than HOME_POS.
 #define max_software_endstops true  // If true, axis won't move to coordinates greater than the defined lengths below.
@@ -412,10 +408,12 @@ const bool Z_MIN_PROBE_ENDSTOP_INVERTING = false; // set to true to invert the l
 // Travel limits after homing (units are in mm)
 #define X_MIN_POS 0
 #define Y_MIN_POS 0
-#define Z_MIN_POS 0
-#define X_MAX_POS 200
-#define Y_MAX_POS 200
-#define Z_MAX_POS 220
+#define U_MIN_POS 0
+#define V_MIN_POS 0
+#define X_MAX_POS 300
+#define Y_MAX_POS 180
+#define U_MAX_POS 300
+#define V_MAX_POS 180
 
 //===========================================================================
 //========================= Filament Runout Sensor ==========================

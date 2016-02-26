@@ -240,7 +240,7 @@ uint8_t marlin_debug_flags = DEBUG_INFO | DEBUG_ERRORS;
 static float feedrate = 1500.0, saved_feedrate;
 float current_position[NUM_AXIS] = { 0.0 };
 static float destination[NUM_AXIS] = { 0.0 };
-bool axis_known_position[3] = { false };
+bool axis_known_position[4] = { false };
 
 static long gcode_N, gcode_LastN, Stopped_gcode_LastN = 0;
 
@@ -258,9 +258,9 @@ int extruder_multiplier[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(100);
 bool volumetric_enabled = false;
 float filament_size[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(DEFAULT_NOMINAL_FILAMENT_DIA);
 float volumetric_multiplier[EXTRUDERS] = ARRAY_BY_EXTRUDERS1(1.0);
-float home_offset[3] = { 0 };
-float min_pos[3] = { X_MIN_POS, Y_MIN_POS, Z_MIN_POS };
-float max_pos[3] = { X_MAX_POS, Y_MAX_POS, Z_MAX_POS };
+float home_offset[4] = { 0 };
+float min_pos[4] = { X_MIN_POS, Y_MIN_POS, X_MIN_POS, Y_MIN_POS };
+float max_pos[4] = { X_MAX_POS, Y_MAX_POS, X_MAX_POS, Y_MAX_POS };
 
 uint8_t active_extruder = 0;
 int fanSpeed = 0;
@@ -268,7 +268,7 @@ bool cancel_heatup = false;
 
 const char errormagic[] PROGMEM = "Error:";
 const char echomagic[] PROGMEM = "echo:";
-const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
+const char axis_codes[NUM_AXIS] = {'X', 'Y', 'U', 'V'};
 
 static bool relative_mode = false;  //Determines Absolute or Relative Coordinates
 static char serial_char;
@@ -1005,8 +1005,8 @@ DEFINE_PGM_READ_ANY(float,       float);
 DEFINE_PGM_READ_ANY(signed char, byte);
 
 #define XYZ_CONSTS_FROM_CONFIG(type, array, CONFIG) \
-  static const PROGMEM type array##_P[3] =        \
-      { X_##CONFIG, Y_##CONFIG, Z_##CONFIG };     \
+  static const PROGMEM type array##_P[4] =        \
+      { X_##CONFIG, Y_##CONFIG, U_##CONFIG, V_##CONFIG };     \
   static inline type array(int axis)          \
   { return pgm_read_any(&array##_P[axis]); }
 
@@ -1153,26 +1153,17 @@ inline void set_homing_bump_feedrate(AxisEnum axis) {
   feedrate = homing_feedrate[axis] / hbd;
 }
 inline void line_to_current_position() {
-  plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS], feedrate / 60, active_extruder);
-}
-inline void line_to_z(float zPosition) {
-  plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], zPosition, current_position[E_AXIS], feedrate / 60, active_extruder);
+  plan_buffer_line(current_position[X_AXIS], current_position[Y_AXIS], current_position[U_AXIS], current_position[V_AXIS], feedrate / 60, active_extruder);
 }
 inline void line_to_destination(float mm_m) {
-  plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], mm_m / 60, active_extruder);
+  plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[U_AXIS], destination[V_AXIS], mm_m / 60, active_extruder);
 }
 inline void line_to_destination() {
   line_to_destination(feedrate);
 }
 inline void sync_plan_position() {
-  plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[Z_AXIS], current_position[E_AXIS]);
+  plan_set_position(current_position[X_AXIS], current_position[Y_AXIS], current_position[U_AXIS], current_position[V_AXIS]);
 }
-#if ENABLED(DELTA) || ENABLED(SCARA)
-  inline void sync_plan_position_delta() {
-    calculate_delta(current_position);
-    plan_set_position(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], current_position[E_AXIS]);
-  }
-#endif
 inline void set_current_to_destination() { memcpy(current_position, destination, sizeof(current_position)); }
 inline void set_destination_to_current() { memcpy(destination, current_position, sizeof(destination)); }
 
@@ -1208,7 +1199,10 @@ static void homeaxis(AxisEnum axis) {
   #define HOMEAXIS_DO(LETTER) \
     ((LETTER##_MIN_PIN > -1 && LETTER##_HOME_DIR==-1) || (LETTER##_MAX_PIN > -1 && LETTER##_HOME_DIR==1))
 
-  if (axis == X_AXIS ? HOMEAXIS_DO(X) : axis == Y_AXIS ? HOMEAXIS_DO(Y) : axis == Z_AXIS ? HOMEAXIS_DO(Z) : 0) {
+  if (axis == X_AXIS ? HOMEAXIS_DO(X) :
+  			axis == Y_AXIS ? HOMEAXIS_DO(Y) :
+  					axis == U_AXIS ? HOMEAXIS_DO(U) :
+  							axis == V_AXIS ? HOMEAXIS_DO(V) : 0) {
 
     int axis_home_dir =
       #if ENABLED(DUAL_X_CARRIAGE)
@@ -1221,10 +1215,10 @@ static void homeaxis(AxisEnum axis) {
     sync_plan_position();
 
 
-    // Set a flag for Z motor locking
-    #if ENABLED(Z_DUAL_ENDSTOPS)
-      if (axis == Z_AXIS) In_Homing_Process(true);
-    #endif
+//    // Set a flag for Z motor locking
+//    #if ENABLED(Z_DUAL_ENDSTOPS)
+//      if (axis == Z_AXIS) In_Homing_Process(true);
+//    #endif
 
     // Move towards the endstop until an endstop is triggered
     destination[axis] = 1.5 * max_length(axis) * axis_home_dir;
@@ -1320,58 +1314,6 @@ static void homeaxis(AxisEnum axis) {
   #endif
 }
 
-#if ENABLED(FWRETRACT)
-
-  void retract(bool retracting, bool swapping = false) {
-
-    if (retracting == retracted[active_extruder]) return;
-
-    float oldFeedrate = feedrate;
-
-    set_destination_to_current();
-
-    if (retracting) {
-
-      feedrate = retract_feedrate * 60;
-      current_position[E_AXIS] += (swapping ? retract_length_swap : retract_length) / volumetric_multiplier[active_extruder];
-      plan_set_e_position(current_position[E_AXIS]);
-      prepare_move();
-
-      if (retract_zlift > 0.01) {
-        current_position[Z_AXIS] -= retract_zlift;
-        #if ENABLED(DELTA)
-          sync_plan_position_delta();
-        #else
-          sync_plan_position();
-        #endif
-        prepare_move();
-      }
-    }
-    else {
-
-      if (retract_zlift > 0.01) {
-        current_position[Z_AXIS] += retract_zlift;
-        #if ENABLED(DELTA)
-          sync_plan_position_delta();
-        #else
-          sync_plan_position();
-        #endif
-        //prepare_move();
-      }
-
-      feedrate = retract_recover_feedrate * 60;
-      float move_e = swapping ? retract_length_swap + retract_recover_length_swap : retract_length + retract_recover_length;
-      current_position[E_AXIS] -= move_e / volumetric_multiplier[active_extruder];
-      plan_set_e_position(current_position[E_AXIS]);
-      prepare_move();
-    }
-
-    feedrate = oldFeedrate;
-    retracted[active_extruder] = retracting;
-
-  } // retract()
-
-#endif // FWRETRACT
 
 /**
  *
@@ -1552,41 +1494,10 @@ inline void gcode_G28() {
 
     bool  homeX = code_seen(axis_codes[X_AXIS]),
           homeY = code_seen(axis_codes[Y_AXIS]),
-          homeZ = code_seen(axis_codes[Z_AXIS]);
+          homeU = code_seen(axis_codes[U_AXIS]),
+					homeV = code_seen(axis_codes[V_AXIS]);
 
-    home_all_axis = (!homeX && !homeY && !homeZ) || (homeX && homeY && homeZ);
-
-    if (home_all_axis || homeZ) {
-
-      #if Z_HOME_DIR > 0  // If homing away from BED do Z first
-
-        HOMEAXIS(Z);
-        #if ENABLED(DEBUG_LEVELING_FEATURE)
-          if (marlin_debug_flags & DEBUG_LEVELING) {
-            print_xyz("> HOMEAXIS(Z) > current_position", current_position);
-          }
-        #endif
-
-      #elif DISABLED(Z_SAFE_HOMING) && defined(Z_RAISE_BEFORE_HOMING) && Z_RAISE_BEFORE_HOMING > 0
-
-        // Raise Z before homing any other axes
-        // (Does this need to be "negative home direction?" Why not just use Z_RAISE_BEFORE_HOMING?)
-        destination[Z_AXIS] = -Z_RAISE_BEFORE_HOMING * home_dir(Z_AXIS);
-        #if ENABLED(DEBUG_LEVELING_FEATURE)
-          if (marlin_debug_flags & DEBUG_LEVELING) {
-            SERIAL_ECHOPAIR("Raise Z (before homing) by ", (float)Z_RAISE_BEFORE_HOMING);
-            SERIAL_EOL;
-            print_xyz("> (home_all_axis || homeZ) > destination", destination);
-          }
-        #endif
-        feedrate = max_feedrate[Z_AXIS] * 60;
-        line_to_destination();
-        st_synchronize();
-
-      #endif
-
-    } // home_all_axis || homeZ
-
+    home_all_axis = (!homeX && !homeY && !homeU && !homeV) || (homeX && homeY && homeU && homeV);
 
     #if ENABLED(HOME_Y_BEFORE_X)
       // Home Y
@@ -1629,127 +1540,6 @@ inline void gcode_G28() {
       }
     #endif
 
-    // Home Z last if homing towards the bed
-    #if Z_HOME_DIR < 0
-
-      if (home_all_axis || homeZ) {
-
-        #if ENABLED(Z_SAFE_HOMING)
-
-          #if ENABLED(DEBUG_LEVELING_FEATURE)
-            if (marlin_debug_flags & DEBUG_LEVELING) {
-              SERIAL_ECHOLNPGM("> Z_SAFE_HOMING >>>");
-            }
-          #endif
-
-          if (home_all_axis) {
-
-            current_position[Z_AXIS] = 0;
-            sync_plan_position();
-
-            //
-            // Set the Z probe (or just the nozzle) destination to the safe homing point
-            //
-            // NOTE: If current_position[X_AXIS] or current_position[Y_AXIS] were set above
-            // then this may not work as expected.
-            destination[X_AXIS] = round(Z_SAFE_HOMING_X_POINT - X_PROBE_OFFSET_FROM_EXTRUDER);
-            destination[Y_AXIS] = round(Z_SAFE_HOMING_Y_POINT - Y_PROBE_OFFSET_FROM_EXTRUDER);
-            destination[Z_AXIS] = -Z_RAISE_BEFORE_HOMING * home_dir(Z_AXIS);    // Set destination away from bed
-            feedrate = XY_TRAVEL_SPEED;
-
-            #if ENABLED(DEBUG_LEVELING_FEATURE)
-              if (marlin_debug_flags & DEBUG_LEVELING) {
-                SERIAL_ECHOPAIR("Raise Z (before homing) by ", (float)Z_RAISE_BEFORE_HOMING);
-                SERIAL_EOL;
-                print_xyz("> home_all_axis > current_position", current_position);
-                print_xyz("> home_all_axis > destination", destination);
-              }
-            #endif
-
-            // This could potentially move X, Y, Z all together
-            line_to_destination();
-            st_synchronize();
-
-            // Set current X, Y is the Z_SAFE_HOMING_POINT minus PROBE_OFFSET_FROM_EXTRUDER
-            current_position[X_AXIS] = destination[X_AXIS];
-            current_position[Y_AXIS] = destination[Y_AXIS];
-
-            // Home the Z axis
-            HOMEAXIS(Z);
-          }
-
-          else if (homeZ) { // Don't need to Home Z twice
-
-            // Let's see if X and Y are homed
-            if (axis_known_position[X_AXIS] && axis_known_position[Y_AXIS]) {
-
-              // Make sure the Z probe is within the physical limits
-              // NOTE: This doesn't necessarily ensure the Z probe is also within the bed!
-              float cpx = current_position[X_AXIS], cpy = current_position[Y_AXIS];
-              if (   cpx >= X_MIN_POS - X_PROBE_OFFSET_FROM_EXTRUDER
-                  && cpx <= X_MAX_POS - X_PROBE_OFFSET_FROM_EXTRUDER
-                  && cpy >= Y_MIN_POS - Y_PROBE_OFFSET_FROM_EXTRUDER
-                  && cpy <= Y_MAX_POS - Y_PROBE_OFFSET_FROM_EXTRUDER) {
-                // Set the plan current position to X, Y, 0
-                current_position[Z_AXIS] = 0;
-                plan_set_position(cpx, cpy, 0, current_position[E_AXIS]); // = sync_plan_position
-
-                // Set Z destination away from bed and raise the axis
-                // NOTE: This should always just be Z_RAISE_BEFORE_HOMING unless...???
-                destination[Z_AXIS] = -Z_RAISE_BEFORE_HOMING * home_dir(Z_AXIS);
-                feedrate = max_feedrate[Z_AXIS] * 60;  // feedrate (mm/m) = max_feedrate (mm/s)
-
-                #if ENABLED(DEBUG_LEVELING_FEATURE)
-                  if (marlin_debug_flags & DEBUG_LEVELING) {
-                    SERIAL_ECHOPAIR("Raise Z (before homing) by ", (float)Z_RAISE_BEFORE_HOMING);
-                    SERIAL_EOL;
-                    print_xyz("> homeZ > current_position", current_position);
-                    print_xyz("> homeZ > destination", destination);
-                  }
-                #endif
-
-                line_to_destination();
-                st_synchronize();
-
-                // Home the Z axis
-                HOMEAXIS(Z);
-              }
-              else {
-                LCD_MESSAGEPGM(MSG_ZPROBE_OUT);
-                SERIAL_ECHO_START;
-                SERIAL_ECHOLNPGM(MSG_ZPROBE_OUT);
-              }
-            }
-            else {
-              LCD_MESSAGEPGM(MSG_POSITION_UNKNOWN);
-              SERIAL_ECHO_START;
-              SERIAL_ECHOLNPGM(MSG_POSITION_UNKNOWN);
-            }
-
-          } // !home_all_axes && homeZ
-
-          #if ENABLED(DEBUG_LEVELING_FEATURE)
-            if (marlin_debug_flags & DEBUG_LEVELING) {
-              SERIAL_ECHOLNPGM("<<< Z_SAFE_HOMING");
-            }
-          #endif
-
-        #else // !Z_SAFE_HOMING
-
-          HOMEAXIS(Z);
-
-        #endif // !Z_SAFE_HOMING
-
-        #if ENABLED(DEBUG_LEVELING_FEATURE)
-          if (marlin_debug_flags & DEBUG_LEVELING) {
-            print_xyz("> (home_all_axis || homeZ) > final", current_position);
-          }
-        #endif
-
-      } // home_all_axis || homeZ
-
-    #endif // Z_HOME_DIR < 0
-
     sync_plan_position();
 
 
@@ -1780,25 +1570,13 @@ inline void gcode_G28() {
  * G92: Set current position to given X Y Z E
  */
 inline void gcode_G92() {
-  if (!code_seen(axis_codes[E_AXIS]))
-    st_synchronize();
+  st_synchronize();
 
-  bool didXYZ = false;
   for (int i = 0; i < NUM_AXIS; i++) {
     if (code_seen(axis_codes[i])) {
       float v = current_position[i] = code_value();
-      if (i == E_AXIS)
-        plan_set_e_position(v);
-      else
-        didXYZ = true;
     }
-  }
-  if (didXYZ) {
-    #if ENABLED(DELTA) || ENABLED(SCARA)
-      sync_plan_position_delta();
-    #else
-      sync_plan_position();
-    #endif
+  sync_plan_position();
   }
 }
 
@@ -2051,257 +1829,6 @@ inline void gcode_M42() {
   } // code_seen('S')
 }
 
-#if ENABLED(AUTO_BED_LEVELING_FEATURE) && ENABLED(Z_MIN_PROBE_REPEATABILITY_TEST)
-
-  // This is redundant since the SanityCheck.h already checks for a valid Z_MIN_PROBE_PIN, but here for clarity.
-  #if ENABLED(Z_MIN_PROBE_ENDSTOP)
-    #if !HAS_Z_PROBE
-      #error You must define Z_MIN_PROBE_PIN to enable Z probe repeatability calculation.
-    #endif
-  #elif !HAS_Z_MIN
-    #error You must define Z_MIN_PIN to enable Z probe repeatability calculation.
-  #endif
-
-  /**
-   * M48: Z probe repeatability measurement function.
-   *
-   * Usage:
-   *   M48 <P#> <X#> <Y#> <V#> <E> <L#>
-   *     P = Number of sampled points (4-50, default 10)
-   *     X = Sample X position
-   *     Y = Sample Y position
-   *     V = Verbose level (0-4, default=1)
-   *     E = Engage Z probe for each reading
-   *     L = Number of legs of movement before probe
-   *
-   * This function assumes the bed has been homed.  Specifically, that a G28 command
-   * as been issued prior to invoking the M48 Z probe repeatability measurement function.
-   * Any information generated by a prior G29 Bed leveling command will be lost and need to be
-   * regenerated.
-   */
-  inline void gcode_M48() {
-
-    double sum = 0.0, mean = 0.0, sigma = 0.0, sample_set[50];
-    uint8_t verbose_level = 1, n_samples = 10, n_legs = 0;
-
-    if (code_seen('V')) {
-      verbose_level = code_value_short();
-      if (verbose_level < 0 || verbose_level > 4) {
-        SERIAL_PROTOCOLPGM("?Verbose Level not plausible (0-4).\n");
-        return;
-      }
-    }
-
-    if (verbose_level > 0)
-      SERIAL_PROTOCOLPGM("M48 Z-Probe Repeatability test\n");
-
-    if (code_seen('P')) {
-      n_samples = code_value_short();
-      if (n_samples < 4 || n_samples > 50) {
-        SERIAL_PROTOCOLPGM("?Sample size not plausible (4-50).\n");
-        return;
-      }
-    }
-
-    double X_current = st_get_position_mm(X_AXIS),
-           Y_current = st_get_position_mm(Y_AXIS),
-           Z_current = st_get_position_mm(Z_AXIS),
-           E_current = st_get_position_mm(E_AXIS),
-           X_probe_location = X_current, Y_probe_location = Y_current,
-           Z_start_location = Z_current + Z_RAISE_BEFORE_PROBING;
-
-    bool deploy_probe_for_each_reading = code_seen('E');
-
-    if (code_seen('X')) {
-      X_probe_location = code_value() - X_PROBE_OFFSET_FROM_EXTRUDER;
-      if (X_probe_location < X_MIN_POS || X_probe_location > X_MAX_POS) {
-        out_of_range_error(PSTR("X"));
-        return;
-      }
-    }
-
-    if (code_seen('Y')) {
-      Y_probe_location = code_value() -  Y_PROBE_OFFSET_FROM_EXTRUDER;
-      if (Y_probe_location < Y_MIN_POS || Y_probe_location > Y_MAX_POS) {
-        out_of_range_error(PSTR("Y"));
-        return;
-      }
-    }
-
-    if (code_seen('L')) {
-      n_legs = code_value_short();
-      if (n_legs == 1) n_legs = 2;
-      if (n_legs < 0 || n_legs > 15) {
-        SERIAL_PROTOCOLPGM("?Number of legs in movement not plausible (0-15).\n");
-        return;
-      }
-    }
-
-    //
-    // Do all the preliminary setup work.   First raise the Z probe.
-    //
-
-    st_synchronize();
-    plan_bed_level_matrix.set_to_identity();
-    plan_buffer_line(X_current, Y_current, Z_start_location, E_current, homing_feedrate[Z_AXIS] / 60, active_extruder);
-    st_synchronize();
-
-    //
-    // Now get everything to the specified probe point So we can safely do a probe to
-    // get us close to the bed.  If the Z-Axis is far from the bed, we don't want to
-    // use that as a starting point for each probe.
-    //
-    if (verbose_level > 2)
-      SERIAL_PROTOCOLPGM("Positioning the probe...\n");
-
-    plan_buffer_line(X_probe_location, Y_probe_location, Z_start_location,
-                     E_current,
-                     homing_feedrate[X_AXIS] / 60,
-                     active_extruder);
-    st_synchronize();
-
-    current_position[X_AXIS] = X_current = st_get_position_mm(X_AXIS);
-    current_position[Y_AXIS] = Y_current = st_get_position_mm(Y_AXIS);
-    current_position[Z_AXIS] = Z_current = st_get_position_mm(Z_AXIS);
-    current_position[E_AXIS] = E_current = st_get_position_mm(E_AXIS);
-
-    //
-    // OK, do the initial probe to get us close to the bed.
-    // Then retrace the right amount and use that in subsequent probes
-    //
-
-    deploy_z_probe();
-
-    setup_for_endstop_move();
-    run_z_probe();
-
-    current_position[Z_AXIS] = Z_current = st_get_position_mm(Z_AXIS);
-    Z_start_location = st_get_position_mm(Z_AXIS) + Z_RAISE_BEFORE_PROBING;
-
-    plan_buffer_line(X_probe_location, Y_probe_location, Z_start_location,
-                     E_current,
-                     homing_feedrate[X_AXIS] / 60,
-                     active_extruder);
-    st_synchronize();
-    current_position[Z_AXIS] = Z_current = st_get_position_mm(Z_AXIS);
-
-    if (deploy_probe_for_each_reading) stow_z_probe();
-
-    for (uint8_t n = 0; n < n_samples; n++) {
-      // Make sure we are at the probe location
-      do_blocking_move_to(X_probe_location, Y_probe_location, Z_start_location); // this also updates current_position
-
-      if (n_legs) {
-        millis_t ms = millis();
-        double radius = ms % (X_MAX_LENGTH / 4),       // limit how far out to go
-               theta = RADIANS(ms % 360L);
-        float dir = (ms & 0x0001) ? 1 : -1;            // clockwise or counter clockwise
-
-        //SERIAL_ECHOPAIR("starting radius: ",radius);
-        //SERIAL_ECHOPAIR("   theta: ",theta);
-        //SERIAL_ECHOPAIR("   direction: ",dir);
-        //SERIAL_EOL;
-
-        for (uint8_t l = 0; l < n_legs - 1; l++) {
-          ms = millis();
-          theta += RADIANS(dir * (ms % 20L));
-          radius += (ms % 10L) - 5L;
-          if (radius < 0.0) radius = -radius;
-
-          X_current = X_probe_location + cos(theta) * radius;
-          X_current = constrain(X_current, X_MIN_POS, X_MAX_POS);
-          Y_current = Y_probe_location + sin(theta) * radius;
-          Y_current = constrain(Y_current, Y_MIN_POS, Y_MAX_POS);
-
-          if (verbose_level > 3) {
-            SERIAL_ECHOPAIR("x: ", X_current);
-            SERIAL_ECHOPAIR("y: ", Y_current);
-            SERIAL_EOL;
-          }
-
-          do_blocking_move_to(X_current, Y_current, Z_current); // this also updates current_position
-
-        } // n_legs loop
-
-        // Go back to the probe location
-        do_blocking_move_to(X_probe_location, Y_probe_location, Z_start_location); // this also updates current_position
-
-      } // n_legs
-
-      if (deploy_probe_for_each_reading)  {
-        deploy_z_probe();
-        delay(1000);
-      }
-
-      setup_for_endstop_move();
-      run_z_probe();
-
-      sample_set[n] = current_position[Z_AXIS];
-
-      //
-      // Get the current mean for the data points we have so far
-      //
-      sum = 0.0;
-      for (uint8_t j = 0; j <= n; j++) sum += sample_set[j];
-      mean = sum / (n + 1);
-
-      //
-      // Now, use that mean to calculate the standard deviation for the
-      // data points we have so far
-      //
-      sum = 0.0;
-      for (uint8_t j = 0; j <= n; j++) {
-        float ss = sample_set[j] - mean;
-        sum += ss * ss;
-      }
-      sigma = sqrt(sum / (n + 1));
-
-      if (verbose_level > 1) {
-        SERIAL_PROTOCOL(n + 1);
-        SERIAL_PROTOCOLPGM(" of ");
-        SERIAL_PROTOCOL((int)n_samples);
-        SERIAL_PROTOCOLPGM("   z: ");
-        SERIAL_PROTOCOL_F(current_position[Z_AXIS], 6);
-        if (verbose_level > 2) {
-          SERIAL_PROTOCOLPGM(" mean: ");
-          SERIAL_PROTOCOL_F(mean, 6);
-          SERIAL_PROTOCOLPGM("   sigma: ");
-          SERIAL_PROTOCOL_F(sigma, 6);
-        }
-      }
-
-      if (verbose_level > 0) SERIAL_EOL;
-
-      plan_buffer_line(X_probe_location, Y_probe_location, Z_start_location, current_position[E_AXIS], homing_feedrate[Z_AXIS] / 60, active_extruder);
-      st_synchronize();
-
-      // Stow between
-      if (deploy_probe_for_each_reading) {
-        stow_z_probe();
-        delay(1000);
-      }
-    }
-
-    // Stow after
-    if (!deploy_probe_for_each_reading) {
-      stow_z_probe();
-      delay(1000);
-    }
-
-    clean_up_after_endstop_move();
-
-    if (verbose_level > 0) {
-      SERIAL_PROTOCOLPGM("Mean: ");
-      SERIAL_PROTOCOL_F(mean, 6);
-      SERIAL_EOL;
-    }
-
-    SERIAL_PROTOCOLPGM("Standard Deviation: ");
-    SERIAL_PROTOCOL_F(sigma, 6);
-    SERIAL_EOL; SERIAL_EOL;
-  }
-
-#endif // AUTO_BED_LEVELING_FEATURE && Z_MIN_PROBE_REPEATABILITY_TEST
 
 /**
  * M104: Set hot end temperature
@@ -2701,12 +2228,12 @@ inline void gcode_M81() {
 /**
  * M82: Set E codes absolute (default)
  */
-inline void gcode_M82() { axis_relative_modes[E_AXIS] = false; }
+inline void gcode_M82() { }
 
 /**
  * M83: Set E codes relative while in Absolute Coordinates (G90) mode
  */
-inline void gcode_M83() { axis_relative_modes[E_AXIS] = true; }
+inline void gcode_M83() { }
 
 /**
  * M18, M84: Disable all stepper motors
@@ -2716,7 +2243,7 @@ inline void gcode_M18_M84() {
     stepper_inactive_time = code_value() * 1000;
   }
   else {
-    bool all_axis = !((code_seen(axis_codes[X_AXIS])) || (code_seen(axis_codes[Y_AXIS])) || (code_seen(axis_codes[Z_AXIS])) || (code_seen(axis_codes[E_AXIS])));
+    bool all_axis = !((code_seen(axis_codes[X_AXIS])) || (code_seen(axis_codes[Y_AXIS])) || (code_seen(axis_codes[U_AXIS])) || (code_seen(axis_codes[V_AXIS])));
     if (all_axis) {
       finishAndDisableSteppers();
     }
@@ -2724,6 +2251,8 @@ inline void gcode_M18_M84() {
       st_synchronize();
       if (code_seen('X')) disable_x();
       if (code_seen('Y')) disable_y();
+      if (code_seen('U')) disable_u();
+      if (code_seen('V')) disable_v();
     }
   }
 }
@@ -2742,19 +2271,7 @@ inline void gcode_M85() {
 inline void gcode_M92() {
   for (int8_t i = 0; i < NUM_AXIS; i++) {
     if (code_seen(axis_codes[i])) {
-      if (i == E_AXIS) {
-        float value = code_value();
-        if (value < 20.0) {
-          float factor = axis_steps_per_unit[i] / value; // increase e constants if M92 E14 is given for netfab.
-          max_e_jerk *= factor;
-          max_feedrate[i] *= factor;
-          axis_steps_per_sqr_second[i] *= factor;
-        }
-        axis_steps_per_unit[i] = value;
-      }
-      else {
-        axis_steps_per_unit[i] = code_value();
-      }
+      axis_steps_per_unit[i] = code_value();
     }
   }
 }
@@ -2767,39 +2284,22 @@ inline void gcode_M114() {
   SERIAL_PROTOCOL(current_position[X_AXIS]);
   SERIAL_PROTOCOLPGM(" Y:");
   SERIAL_PROTOCOL(current_position[Y_AXIS]);
-  SERIAL_PROTOCOLPGM(" Z:");
-  SERIAL_PROTOCOL(current_position[Z_AXIS]);
-  SERIAL_PROTOCOLPGM(" E:");
-  SERIAL_PROTOCOL(current_position[E_AXIS]);
+  SERIAL_PROTOCOLPGM(" U:");
+  SERIAL_PROTOCOL(current_position[U_AXIS]);
+  SERIAL_PROTOCOLPGM(" V:");
+  SERIAL_PROTOCOL(current_position[V_AXIS]);
 
   SERIAL_PROTOCOLPGM(MSG_COUNT_X);
   SERIAL_PROTOCOL(st_get_position_mm(X_AXIS));
   SERIAL_PROTOCOLPGM(" Y:");
   SERIAL_PROTOCOL(st_get_position_mm(Y_AXIS));
-  SERIAL_PROTOCOLPGM(" Z:");
-  SERIAL_PROTOCOL(st_get_position_mm(Z_AXIS));
+  SERIAL_PROTOCOLPGM(" U:");
+  SERIAL_PROTOCOL(st_get_position_mm(U_AXIS));
+  SERIAL_PROTOCOLPGM(" V:");
+  SERIAL_PROTOCOL(st_get_position_mm(V_AXIS));
 
   SERIAL_EOL;
 
-  #if ENABLED(SCARA)
-    SERIAL_PROTOCOLPGM("SCARA Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta:");
-    SERIAL_PROTOCOL(delta[Y_AXIS]);
-    SERIAL_EOL;
-
-    SERIAL_PROTOCOLPGM("SCARA Cal - Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS] + home_offset[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta (90):");
-    SERIAL_PROTOCOL(delta[Y_AXIS] - delta[X_AXIS] - 90 + home_offset[Y_AXIS]);
-    SERIAL_EOL;
-
-    SERIAL_PROTOCOLPGM("SCARA step Cal - Theta:");
-    SERIAL_PROTOCOL(delta[X_AXIS] / 90 * axis_steps_per_unit[X_AXIS]);
-    SERIAL_PROTOCOLPGM("   Psi+Theta:");
-    SERIAL_PROTOCOL((delta[Y_AXIS] - delta[X_AXIS]) / 90 * axis_steps_per_unit[Y_AXIS]);
-    SERIAL_EOL; SERIAL_EOL;
-  #endif
 }
 
 /**
@@ -2990,15 +2490,13 @@ inline void gcode_M205() {
   if (code_seen('T')) mintravelfeedrate = code_value();
   if (code_seen('B')) minsegmenttime = code_value();
   if (code_seen('X')) max_xy_jerk = code_value();
-  if (code_seen('Z')) max_z_jerk = code_value();
-  if (code_seen('E')) max_e_jerk = code_value();
 }
 
 /**
  * M206: Set Additional Homing Offset (X Y Z). SCARA aliases T=X, P=Y
  */
 inline void gcode_M206() {
-  for (int8_t i = X_AXIS; i <= Z_AXIS; i++) {
+  for (int8_t i = X_AXIS; i <= V_AXIS; i++) {
     if (code_seen(axis_codes[i])) {
       home_offset[i] = code_value();
     }
@@ -3688,7 +3186,7 @@ inline void gcode_M428() {
   float new_offs[3], new_pos[3];
   memcpy(new_pos, current_position, sizeof(new_pos));
   memcpy(new_offs, home_offset, sizeof(new_offs));
-  for (int8_t i = X_AXIS; i <= Z_AXIS; i++) {
+  for (int8_t i = X_AXIS; i <= V_AXIS; i++) {
     if (axis_known_position[i]) {
       float base = (new_pos[i] > (min_pos[i] + max_pos[i]) / 2) ? base_home_pos(i) : 0,
             diff = new_pos[i] - base;
@@ -4220,12 +3718,12 @@ void process_next_command() {
         break;
 
       // G2, G3
-      #if DISABLED(SCARA)
-        case 2: // G2  - CW ARC
-        case 3: // G3  - CCW ARC
-          gcode_G2_G3(codenum == 2);
-          break;
-      #endif
+//      #if DISABLED(SCARA)
+//        case 2: // G2  - CW ARC
+//        case 3: // G3  - CCW ARC
+//          gcode_G2_G3(codenum == 2);
+//          break;
+//      #endif
 
       // G4 Dwell
       case 4:
@@ -4735,27 +4233,15 @@ void clamp_to_software_endstops(float target[3]) {
   if (min_software_endstops) {
     NOLESS(target[X_AXIS], min_pos[X_AXIS]);
     NOLESS(target[Y_AXIS], min_pos[Y_AXIS]);
-
-    float negative_z_offset = 0;
-    #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-      if (zprobe_zoffset < 0) negative_z_offset += zprobe_zoffset;
-      if (home_offset[Z_AXIS] < 0) {
-        #if ENABLED(DEBUG_LEVELING_FEATURE)
-          if (marlin_debug_flags & DEBUG_LEVELING) {
-            SERIAL_ECHOPAIR("> clamp_to_software_endstops > Add home_offset[Z_AXIS]:", home_offset[Z_AXIS]);
-            SERIAL_EOL;
-          }
-        #endif
-        negative_z_offset += home_offset[Z_AXIS];
-      }
-    #endif
-    NOLESS(target[Z_AXIS], min_pos[Z_AXIS] + negative_z_offset);
+    NOLESS(target[U_AXIS], min_pos[U_AXIS]);
+    NOLESS(target[V_AXIS], min_pos[V_AXIS]);
   }
 
   if (max_software_endstops) {
     NOMORE(target[X_AXIS], max_pos[X_AXIS]);
     NOMORE(target[Y_AXIS], max_pos[Y_AXIS]);
-    NOMORE(target[Z_AXIS], max_pos[Z_AXIS]);
+    NOMORE(target[U_AXIS], max_pos[U_AXIS]);
+    NOMORE(target[V_AXIS], max_pos[V_AXIS]);
   }
 }
 
@@ -5087,131 +4573,131 @@ void plan_arc(
   uint8_t clockwise       // Clockwise?
 ) {
 
-  float radius = hypot(offset[X_AXIS], offset[Y_AXIS]),
-        center_axis0 = current_position[X_AXIS] + offset[X_AXIS],
-        center_axis1 = current_position[Y_AXIS] + offset[Y_AXIS],
-        linear_travel = target[Z_AXIS] - current_position[Z_AXIS],
-        extruder_travel = target[E_AXIS] - current_position[E_AXIS],
-        r_axis0 = -offset[X_AXIS],  // Radius vector from center to current location
-        r_axis1 = -offset[Y_AXIS],
-        rt_axis0 = target[X_AXIS] - center_axis0,
-        rt_axis1 = target[Y_AXIS] - center_axis1;
-
-  // CCW angle of rotation between position and target from the circle center. Only one atan2() trig computation required.
-  float angular_travel = atan2(r_axis0 * rt_axis1 - r_axis1 * rt_axis0, r_axis0 * rt_axis0 + r_axis1 * rt_axis1);
-  if (angular_travel < 0)  angular_travel += RADIANS(360);
-  if (clockwise)  angular_travel -= RADIANS(360);
-
-  // Make a circle if the angular rotation is 0
-  if (current_position[X_AXIS] == target[X_AXIS] && current_position[Y_AXIS] == target[Y_AXIS] && angular_travel == 0)
-    angular_travel += RADIANS(360);
-
-  float mm_of_travel = hypot(angular_travel * radius, fabs(linear_travel));
-  if (mm_of_travel < 0.001)  return;
-  uint16_t segments = floor(mm_of_travel / MM_PER_ARC_SEGMENT);
-  if (segments == 0) segments = 1;
-
-  float theta_per_segment = angular_travel / segments;
-  float linear_per_segment = linear_travel / segments;
-  float extruder_per_segment = extruder_travel / segments;
-
-  /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
-     and phi is the angle of rotation. Based on the solution approach by Jens Geisler.
-         r_T = [cos(phi) -sin(phi);
-                sin(phi)  cos(phi] * r ;
-
-     For arc generation, the center of the circle is the axis of rotation and the radius vector is
-     defined from the circle center to the initial position. Each line segment is formed by successive
-     vector rotations. This requires only two cos() and sin() computations to form the rotation
-     matrix for the duration of the entire arc. Error may accumulate from numerical round-off, since
-     all double numbers are single precision on the Arduino. (True double precision will not have
-     round off issues for CNC applications.) Single precision error can accumulate to be greater than
-     tool precision in some cases. Therefore, arc path correction is implemented.
-
-     Small angle approximation may be used to reduce computation overhead further. This approximation
-     holds for everything, but very small circles and large MM_PER_ARC_SEGMENT values. In other words,
-     theta_per_segment would need to be greater than 0.1 rad and N_ARC_CORRECTION would need to be large
-     to cause an appreciable drift error. N_ARC_CORRECTION~=25 is more than small enough to correct for
-     numerical drift error. N_ARC_CORRECTION may be on the order a hundred(s) before error becomes an
-     issue for CNC machines with the single precision Arduino calculations.
-
-     This approximation also allows plan_arc to immediately insert a line segment into the planner
-     without the initial overhead of computing cos() or sin(). By the time the arc needs to be applied
-     a correction, the planner should have caught up to the lag caused by the initial plan_arc overhead.
-     This is important when there are successive arc motions.
-  */
-  // Vector rotation matrix values
-  float cos_T = 1 - 0.5 * theta_per_segment * theta_per_segment; // Small angle approximation
-  float sin_T = theta_per_segment;
-
-  float arc_target[NUM_AXIS];
-  float sin_Ti;
-  float cos_Ti;
-  float r_axisi;
-  uint16_t i;
-  int8_t count = 0;
-
-  // Initialize the linear axis
-  arc_target[Z_AXIS] = current_position[Z_AXIS];
-
-  // Initialize the extruder axis
-  arc_target[E_AXIS] = current_position[E_AXIS];
-
-  float feed_rate = feedrate * feedrate_multiplier / 60 / 100.0;
-
-  for (i = 1; i < segments; i++) { // Increment (segments-1)
-
-    if (count < N_ARC_CORRECTION) {
-      // Apply vector rotation matrix to previous r_axis0 / 1
-      r_axisi = r_axis0 * sin_T + r_axis1 * cos_T;
-      r_axis0 = r_axis0 * cos_T - r_axis1 * sin_T;
-      r_axis1 = r_axisi;
-      count++;
-    }
-    else {
-      // Arc correction to radius vector. Computed only every N_ARC_CORRECTION increments.
-      // Compute exact location by applying transformation matrix from initial radius vector(=-offset).
-      cos_Ti = cos(i * theta_per_segment);
-      sin_Ti = sin(i * theta_per_segment);
-      r_axis0 = -offset[X_AXIS] * cos_Ti + offset[Y_AXIS] * sin_Ti;
-      r_axis1 = -offset[X_AXIS] * sin_Ti - offset[Y_AXIS] * cos_Ti;
-      count = 0;
-    }
-
-    // Update arc_target location
-    arc_target[X_AXIS] = center_axis0 + r_axis0;
-    arc_target[Y_AXIS] = center_axis1 + r_axis1;
-    arc_target[Z_AXIS] += linear_per_segment;
-    arc_target[E_AXIS] += extruder_per_segment;
-
-    clamp_to_software_endstops(arc_target);
-
-    #if ENABLED(DELTA) || ENABLED(SCARA)
-      calculate_delta(arc_target);
-      #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-        adjust_delta(arc_target);
-      #endif
-      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], arc_target[E_AXIS], feed_rate, active_extruder);
-    #else
-      plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], arc_target[E_AXIS], feed_rate, active_extruder);
-    #endif
-  }
-
-  // Ensure last segment arrives at target location.
-  #if ENABLED(DELTA) || ENABLED(SCARA)
-    calculate_delta(target);
-    #if ENABLED(AUTO_BED_LEVELING_FEATURE)
-      adjust_delta(target);
-    #endif
-    plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target[E_AXIS], feed_rate, active_extruder);
-  #else
-    plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feed_rate, active_extruder);
-  #endif
-
-  // As far as the parser is concerned, the position is now == target. In reality the
-  // motion control system might still be processing the action and the real tool position
-  // in any intermediate location.
-  set_current_to_destination();
+//  float radius = hypot(offset[X_AXIS], offset[Y_AXIS]),
+//        center_axis0 = current_position[X_AXIS] + offset[X_AXIS],
+//        center_axis1 = current_position[Y_AXIS] + offset[Y_AXIS],
+//        linear_travel = target[Z_AXIS] - current_position[Z_AXIS],
+//        extruder_travel = target[E_AXIS] - current_position[E_AXIS],
+//        r_axis0 = -offset[X_AXIS],  // Radius vector from center to current location
+//        r_axis1 = -offset[Y_AXIS],
+//        rt_axis0 = target[X_AXIS] - center_axis0,
+//        rt_axis1 = target[Y_AXIS] - center_axis1;
+//
+//  // CCW angle of rotation between position and target from the circle center. Only one atan2() trig computation required.
+//  float angular_travel = atan2(r_axis0 * rt_axis1 - r_axis1 * rt_axis0, r_axis0 * rt_axis0 + r_axis1 * rt_axis1);
+//  if (angular_travel < 0)  angular_travel += RADIANS(360);
+//  if (clockwise)  angular_travel -= RADIANS(360);
+//
+//  // Make a circle if the angular rotation is 0
+//  if (current_position[X_AXIS] == target[X_AXIS] && current_position[Y_AXIS] == target[Y_AXIS] && angular_travel == 0)
+//    angular_travel += RADIANS(360);
+//
+//  float mm_of_travel = hypot(angular_travel * radius, fabs(linear_travel));
+//  if (mm_of_travel < 0.001)  return;
+//  uint16_t segments = floor(mm_of_travel / MM_PER_ARC_SEGMENT);
+//  if (segments == 0) segments = 1;
+//
+//  float theta_per_segment = angular_travel / segments;
+//  float linear_per_segment = linear_travel / segments;
+//  float extruder_per_segment = extruder_travel / segments;
+//
+//  /* Vector rotation by transformation matrix: r is the original vector, r_T is the rotated vector,
+//     and phi is the angle of rotation. Based on the solution approach by Jens Geisler.
+//         r_T = [cos(phi) -sin(phi);
+//                sin(phi)  cos(phi] * r ;
+//
+//     For arc generation, the center of the circle is the axis of rotation and the radius vector is
+//     defined from the circle center to the initial position. Each line segment is formed by successive
+//     vector rotations. This requires only two cos() and sin() computations to form the rotation
+//     matrix for the duration of the entire arc. Error may accumulate from numerical round-off, since
+//     all double numbers are single precision on the Arduino. (True double precision will not have
+//     round off issues for CNC applications.) Single precision error can accumulate to be greater than
+//     tool precision in some cases. Therefore, arc path correction is implemented.
+//
+//     Small angle approximation may be used to reduce computation overhead further. This approximation
+//     holds for everything, but very small circles and large MM_PER_ARC_SEGMENT values. In other words,
+//     theta_per_segment would need to be greater than 0.1 rad and N_ARC_CORRECTION would need to be large
+//     to cause an appreciable drift error. N_ARC_CORRECTION~=25 is more than small enough to correct for
+//     numerical drift error. N_ARC_CORRECTION may be on the order a hundred(s) before error becomes an
+//     issue for CNC machines with the single precision Arduino calculations.
+//
+//     This approximation also allows plan_arc to immediately insert a line segment into the planner
+//     without the initial overhead of computing cos() or sin(). By the time the arc needs to be applied
+//     a correction, the planner should have caught up to the lag caused by the initial plan_arc overhead.
+//     This is important when there are successive arc motions.
+//  */
+//  // Vector rotation matrix values
+//  float cos_T = 1 - 0.5 * theta_per_segment * theta_per_segment; // Small angle approximation
+//  float sin_T = theta_per_segment;
+//
+//  float arc_target[NUM_AXIS];
+//  float sin_Ti;
+//  float cos_Ti;
+//  float r_axisi;
+//  uint16_t i;
+//  int8_t count = 0;
+//
+//  // Initialize the linear axis
+//  arc_target[Z_AXIS] = current_position[Z_AXIS];
+//
+//  // Initialize the extruder axis
+//  arc_target[E_AXIS] = current_position[E_AXIS];
+//
+//  float feed_rate = feedrate * feedrate_multiplier / 60 / 100.0;
+//
+//  for (i = 1; i < segments; i++) { // Increment (segments-1)
+//
+//    if (count < N_ARC_CORRECTION) {
+//      // Apply vector rotation matrix to previous r_axis0 / 1
+//      r_axisi = r_axis0 * sin_T + r_axis1 * cos_T;
+//      r_axis0 = r_axis0 * cos_T - r_axis1 * sin_T;
+//      r_axis1 = r_axisi;
+//      count++;
+//    }
+//    else {
+//      // Arc correction to radius vector. Computed only every N_ARC_CORRECTION increments.
+//      // Compute exact location by applying transformation matrix from initial radius vector(=-offset).
+//      cos_Ti = cos(i * theta_per_segment);
+//      sin_Ti = sin(i * theta_per_segment);
+//      r_axis0 = -offset[X_AXIS] * cos_Ti + offset[Y_AXIS] * sin_Ti;
+//      r_axis1 = -offset[X_AXIS] * sin_Ti - offset[Y_AXIS] * cos_Ti;
+//      count = 0;
+//    }
+//
+//    // Update arc_target location
+//    arc_target[X_AXIS] = center_axis0 + r_axis0;
+//    arc_target[Y_AXIS] = center_axis1 + r_axis1;
+//    arc_target[Z_AXIS] += linear_per_segment;
+//    arc_target[E_AXIS] += extruder_per_segment;
+//
+//    clamp_to_software_endstops(arc_target);
+//
+//    #if ENABLED(DELTA) || ENABLED(SCARA)
+//      calculate_delta(arc_target);
+//      #if ENABLED(AUTO_BED_LEVELING_FEATURE)
+//        adjust_delta(arc_target);
+//      #endif
+//      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], arc_target[E_AXIS], feed_rate, active_extruder);
+//    #else
+//      plan_buffer_line(arc_target[X_AXIS], arc_target[Y_AXIS], arc_target[Z_AXIS], arc_target[E_AXIS], feed_rate, active_extruder);
+//    #endif
+//  }
+//
+//  // Ensure last segment arrives at target location.
+//  #if ENABLED(DELTA) || ENABLED(SCARA)
+//    calculate_delta(target);
+//    #if ENABLED(AUTO_BED_LEVELING_FEATURE)
+//      adjust_delta(target);
+//    #endif
+//    plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], target[E_AXIS], feed_rate, active_extruder);
+//  #else
+//    plan_buffer_line(target[X_AXIS], target[Y_AXIS], target[Z_AXIS], target[E_AXIS], feed_rate, active_extruder);
+//  #endif
+//
+//  // As far as the parser is concerned, the position is now == target. In reality the
+//  // motion control system might still be processing the action and the real tool position
+//  // in any intermediate location.
+//  set_current_to_destination();
 }
 
 #if HAS_CONTROLLERFAN
@@ -5264,11 +4750,15 @@ void plan_arc(
 void enable_all_steppers() {
   enable_x();
   enable_y();
+  enable_u();
+  enable_v();
 }
 
 void disable_all_steppers() {
   disable_x();
   disable_y();
+  disable_u();
+  disable_v();
 	}
 
 /**

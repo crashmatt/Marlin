@@ -324,12 +324,6 @@
 
 #if !HAS_HEATER_0
   #error HEATER_0_PIN not defined for this board.
-#elif !PIN_EXISTS(TEMP_0)
-  #error TEMP_0_PIN not defined for this board.
-#elif !PIN_EXISTS(E0_STEP) || !PIN_EXISTS(E0_DIR) || !PIN_EXISTS(E0_ENABLE)
-  #error E0_STEP_PIN, E0_DIR_PIN, or E0_ENABLE_PIN not defined for this board.
-#elif TEMP_SENSOR_0 == 0
-  #error TEMP_SENSOR_0 is required.
 #endif
 
 /**

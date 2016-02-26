@@ -114,10 +114,7 @@ void idle(); // the standard idle routine calls manage_inactivity(false)
 
 void manage_inactivity(bool ignore_stepper_queue = false);
 
-#if ENABLED(DUAL_X_CARRIAGE) && HAS_X_ENABLE && HAS_X2_ENABLE
-  #define  enable_x() do { X_ENABLE_WRITE( X_ENABLE_ON); X2_ENABLE_WRITE( X_ENABLE_ON); } while (0)
-  #define disable_x() do { X_ENABLE_WRITE(!X_ENABLE_ON); X2_ENABLE_WRITE(!X_ENABLE_ON); axis_known_position[X_AXIS] = false; } while (0)
-#elif HAS_X_ENABLE
+#if HAS_X_ENABLE
   #define  enable_x() X_ENABLE_WRITE( X_ENABLE_ON)
   #define disable_x() { X_ENABLE_WRITE(!X_ENABLE_ON); axis_known_position[X_AXIS] = false; }
 #else
@@ -138,6 +135,23 @@ void manage_inactivity(bool ignore_stepper_queue = false);
   #define disable_y() ;
 #endif
 
+#if HAS_U_ENABLE
+  #define  enable_u() U_ENABLE_WRITE( U_ENABLE_ON)
+  #define disable_u() { U_ENABLE_WRITE(!U_ENABLE_ON); axis_known_position[U_AXIS] = false; }
+#else
+  #define enable_u() ;
+  #define disable_u() ;
+#endif
+
+#if HAS_V_ENABLE
+  #define  enable_v() V_ENABLE_WRITE( V_ENABLE_ON)
+  #define disable_v() { V_ENABLE_WRITE(!V_ENABLE_ON); axis_known_position[V_AXIS] = false; }
+#else
+  #define enable_v() ;
+  #define disable_v() ;
+#endif
+
+
 /**
  * The axis order in all axis related arrays is X, Y, Z, E
  */
@@ -149,9 +163,12 @@ void manage_inactivity(bool ignore_stepper_queue = false);
  * A_AXIS and B_AXIS are used by COREXY printers
  * X_HEAD and Y_HEAD is used for systems that don't have a 1:1 relationship between X_AXIS and X Head movement, like CoreXY bots.
  */
-enum AxisEnum {X_AXIS = 0, A_AXIS = 0, Y_AXIS = 1, B_AXIS = 1, Z_AXIS = 2, C_AXIS = 2, E_AXIS = 3, X_HEAD = 4, Y_HEAD = 5, Z_HEAD = 5};
+enum AxisEnum {X_AXIS = 0, Y_AXIS = 1, U_AXIS = 2, V_AXIS = 3,
+							 X_HEAD = 4, Y_HEAD = 5, U_HEAD = 6, V_HEAD = 7};
+enum VirtualAxisEnum {A_AXIS = 0, B_AXIS = 1, C_AXIS = 2, D_AXIS = 3};
 
-enum EndstopEnum {X_MIN = 0, Y_MIN = 1, Z_MIN = 2, Z_MIN_PROBE = 3, X_MAX = 4, Y_MAX = 5, Z_MAX = 6, Z2_MIN = 7, Z2_MAX = 8};
+enum EndstopEnum {X_MIN = 0, Y_MIN = 1, U_MIN = 2, V_MIN = 3,
+									X_MAX = 4, Y_MAX = 5, U_MAX = 6, V_MAX = 7};
 
 void enable_all_steppers();
 void disable_all_steppers();
@@ -210,10 +227,10 @@ extern int extruder_multiplier[EXTRUDERS]; // sets extrude multiply factor (in p
 extern float filament_size[EXTRUDERS]; // cross-sectional area of filament (in millimeters), typically around 1.75 or 2.85, 0 disables the volumetric calculations for the extruder.
 extern float volumetric_multiplier[EXTRUDERS]; // reciprocal of cross-sectional area of filament (in square millimeters), stored this way to reduce computational burden in planner
 extern float current_position[NUM_AXIS];
-extern float home_offset[3]; // axis[n].home_offset
-extern float min_pos[3]; // axis[n].min_pos
-extern float max_pos[3]; // axis[n].max_pos
-extern bool axis_known_position[3]; // axis[n].is_known
+extern float home_offset[4]; // axis[n].home_offset
+extern float min_pos[4]; // axis[n].min_pos
+extern float max_pos[4]; // axis[n].max_pos
+extern bool axis_known_position[4]; // axis[n].is_known
 
 #if ENABLED(DELTA)
   extern float delta[3];

@@ -489,8 +489,8 @@ float junction_deviation = 0.1;
   long target[NUM_AXIS];
   target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
   target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
-  target[Z_AXIS] = 0;
-  target[E_AXIS] = 0;
+  target[U_AXIS] = 0;
+  target[V_AXIS] = 0;
 
   float dx = target[X_AXIS] - position[X_AXIS],
         dy = target[Y_AXIS] - position[Y_AXIS],
@@ -512,20 +512,17 @@ float junction_deviation = 0.1;
     // these equations follow the form of the dA and dB equations on http://www.corexy.com/theory.html
     block->steps[A_AXIS] = labs(dx + dy);
     block->steps[B_AXIS] = labs(dx - dy);
-    block->steps[Z_AXIS] = 0;
-  #elif ENABLED(COREXZ)
-    // corexz planning
-    block->steps[A_AXIS] = labs(dx + dz);
-    block->steps[Y_AXIS] = labs(dy);
-    block->steps[C_AXIS] = labs(dx - dz);
+    block->steps[C_AXIS] = 0;
+    block->steps[D_AXIS] = 0;
   #else
     // default non-h-bot planning
     block->steps[X_AXIS] = labs(dx);
     block->steps[Y_AXIS] = labs(dy);
-    block->steps[Z_AXIS] = 0;
+    block->steps[U_AXIS] = 0;
+    block->steps[V_AXIS] = 0;
   #endif
 
-  block->steps[E_AXIS] = 0;
+    //TODO: Change this
   block->step_event_count = max(block->steps[X_AXIS], block->steps[Y_AXIS]);
 
   // Bail if this is a zero-length block
@@ -553,6 +550,8 @@ float junction_deviation = 0.1;
   //enable active axes
   enable_x();
   enable_y();
+  enable_u();
+  enable_v();
 
   NOLESS(feed_rate, mintravelfeedrate);
 

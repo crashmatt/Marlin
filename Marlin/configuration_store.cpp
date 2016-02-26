@@ -503,7 +503,8 @@ void Config_ResetDefault() {
   max_xy_jerk = DEFAULT_XYJERK;
   max_z_jerk = DEFAULT_ZJERK;
   max_e_jerk = DEFAULT_EJERK;
-  home_offset[X_AXIS] = home_offset[Y_AXIS] = home_offset[Z_AXIS] = 0;
+  home_offset[X_AXIS] = home_offset[Y_AXIS] =
+  		home_offset[U_AXIS] = home_offset[V_AXIS] = 0;
 
   #if ENABLED(MESH_BED_LEVELING)
     mbl.active = 0;
@@ -514,7 +515,7 @@ void Config_ResetDefault() {
   #endif
 
   #if ENABLED(DELTA)
-    endstop_adj[X_AXIS] = endstop_adj[Y_AXIS] = endstop_adj[Z_AXIS] = 0;
+    endstop_adj[X_AXIS] = endstop_adj[Y_AXIS] = endstop_adj[U_AXIS] = endstop_adj[V_AXIS] = 0;
     delta_radius =  DELTA_RADIUS;
     delta_diagonal_rod =  DELTA_DIAGONAL_ROD;
     delta_segments_per_second =  DELTA_SEGMENTS_PER_SECOND;
@@ -606,8 +607,8 @@ void Config_PrintSettings(bool forReplay) {
   }
   SERIAL_ECHOPAIR("  M92 X", axis_steps_per_unit[X_AXIS]);
   SERIAL_ECHOPAIR(" Y", axis_steps_per_unit[Y_AXIS]);
-  SERIAL_ECHOPAIR(" Z", axis_steps_per_unit[Z_AXIS]);
-  SERIAL_ECHOPAIR(" E", axis_steps_per_unit[E_AXIS]);
+  SERIAL_ECHOPAIR(" U", axis_steps_per_unit[U_AXIS]);
+  SERIAL_ECHOPAIR(" V", axis_steps_per_unit[V_AXIS]);
   SERIAL_EOL;
 
   CONFIG_ECHO_START;
@@ -619,7 +620,8 @@ void Config_PrintSettings(bool forReplay) {
     }
     SERIAL_ECHOPAIR("  M365 X", axis_scaling[X_AXIS]);
     SERIAL_ECHOPAIR(" Y", axis_scaling[Y_AXIS]);
-    SERIAL_ECHOPAIR(" Z", axis_scaling[Z_AXIS]);
+    SERIAL_ECHOPAIR(" U", axis_scaling[U_AXIS]);
+    SERIAL_ECHOPAIR(" V", axis_scaling[V_AXIS]);
     SERIAL_EOL;
     CONFIG_ECHO_START;
   #endif // SCARA
@@ -630,8 +632,8 @@ void Config_PrintSettings(bool forReplay) {
   }
   SERIAL_ECHOPAIR("  M203 X", max_feedrate[X_AXIS]);
   SERIAL_ECHOPAIR(" Y", max_feedrate[Y_AXIS]);
-  SERIAL_ECHOPAIR(" Z", max_feedrate[Z_AXIS]);
-  SERIAL_ECHOPAIR(" E", max_feedrate[E_AXIS]);
+  SERIAL_ECHOPAIR(" U", max_feedrate[U_AXIS]);
+  SERIAL_ECHOPAIR(" V", max_feedrate[V_AXIS]);
   SERIAL_EOL;
 
   CONFIG_ECHO_START;
@@ -641,8 +643,8 @@ void Config_PrintSettings(bool forReplay) {
   }
   SERIAL_ECHOPAIR("  M201 X", max_acceleration_units_per_sq_second[X_AXIS]);
   SERIAL_ECHOPAIR(" Y", max_acceleration_units_per_sq_second[Y_AXIS]);
-  SERIAL_ECHOPAIR(" Z", max_acceleration_units_per_sq_second[Z_AXIS]);
-  SERIAL_ECHOPAIR(" E", max_acceleration_units_per_sq_second[E_AXIS]);
+  SERIAL_ECHOPAIR(" U", max_acceleration_units_per_sq_second[U_AXIS]);
+  SERIAL_ECHOPAIR(" V", max_acceleration_units_per_sq_second[V_AXIS]);
   SERIAL_EOL;
   CONFIG_ECHO_START;
   if (!forReplay) {
@@ -663,8 +665,6 @@ void Config_PrintSettings(bool forReplay) {
   SERIAL_ECHOPAIR(" T", mintravelfeedrate);
   SERIAL_ECHOPAIR(" B", minsegmenttime);
   SERIAL_ECHOPAIR(" X", max_xy_jerk);
-  SERIAL_ECHOPAIR(" Z", max_z_jerk);
-  SERIAL_ECHOPAIR(" E", max_e_jerk);
   SERIAL_EOL;
 
   CONFIG_ECHO_START;
@@ -674,7 +674,8 @@ void Config_PrintSettings(bool forReplay) {
   }
   SERIAL_ECHOPAIR("  M206 X", home_offset[X_AXIS]);
   SERIAL_ECHOPAIR(" Y", home_offset[Y_AXIS]);
-  SERIAL_ECHOPAIR(" Z", home_offset[Z_AXIS]);
+  SERIAL_ECHOPAIR(" U", home_offset[U_AXIS]);
+  SERIAL_ECHOPAIR(" V", home_offset[V_AXIS]);
   SERIAL_EOL;
 
   #if ENABLED(MESH_BED_LEVELING)

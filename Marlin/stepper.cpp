@@ -216,16 +216,14 @@ void checkHitEndstops() {
       SERIAL_ECHOPAIR(" Y:", (float)endstops_trigsteps[Y_AXIS] / axis_steps_per_unit[Y_AXIS]);
       LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Y");
     }
-    if (endstop_hit_bits & BIT(Z_MIN)) {
-      SERIAL_ECHOPAIR(" Z:", (float)endstops_trigsteps[Z_AXIS] / axis_steps_per_unit[Z_AXIS]);
-      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "Z");
+    if (endstop_hit_bits & BIT(U_MIN)) {
+      SERIAL_ECHOPAIR(" U:", (float)endstops_trigsteps[U_AXIS] / axis_steps_per_unit[U_AXIS]);
+      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "U");
     }
-    #if ENABLED(Z_MIN_PROBE_ENDSTOP)
-      if (endstop_hit_bits & BIT(Z_MIN_PROBE)) {
-        SERIAL_ECHOPAIR(" Z_MIN_PROBE:", (float)endstops_trigsteps[Z_AXIS] / axis_steps_per_unit[Z_AXIS]);
-        LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "ZP");
-      }
-    #endif
+    if (endstop_hit_bits & BIT(V_MIN)) {
+      SERIAL_ECHOPAIR(" V:", (float)endstops_trigsteps[V_AXIS] / axis_steps_per_unit[V_AXIS]);
+      LCD_MESSAGEPGM(MSG_ENDSTOPS_HIT "V");
+    }
     SERIAL_EOL;
 
     endstops_hit_on_purpose();
@@ -743,15 +741,12 @@ void st_set_position(const long& x, const long& y, const long& z, const long& e)
   CRITICAL_SECTION_START;
   count_position[X_AXIS] = x;
   count_position[Y_AXIS] = y;
-  count_position[Z_AXIS] = 0;
-  count_position[E_AXIS] = 0;
+  count_position[U_AXIS] = 0;
+  count_position[V_AXIS] = 0;
   CRITICAL_SECTION_END;
 }
 
 void st_set_e_position(const long& e) {
-  CRITICAL_SECTION_START;
-  count_position[E_AXIS] = e;
-  CRITICAL_SECTION_END;
 }
 
 long st_get_position(uint8_t axis) {

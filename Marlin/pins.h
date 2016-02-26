@@ -44,6 +44,9 @@
 #elif MB(RAMPS_14_EEB) || MB(RAMPS_14_EFF) || MB(RAMPS_14_EEF) || MB(RAMPS_14_SF)
   #define IS_RAMPS_14
   #include "pins_RAMPS_13.h"
+#elif MB(RAMPS_14_XYUV)
+  #define IS_RAMPS_14
+  #include "pins_RAMPS_13_XYUV.h"
 #elif MB(GEN6)
   #include "pins_GEN6.h"
 #elif MB(GEN6_DELUXE)
@@ -251,9 +254,9 @@
 #define SENSITIVE_PINS { 0, 1, \
     X_STEP_PIN, X_DIR_PIN, X_ENABLE_PIN, X_MIN_PIN, X_MAX_PIN, \
     Y_STEP_PIN, Y_DIR_PIN, Y_ENABLE_PIN, Y_MIN_PIN, Y_MAX_PIN, \
-    Z_STEP_PIN, Z_DIR_PIN, Z_ENABLE_PIN, Z_MIN_PIN, Z_MAX_PIN, Z_MIN_PROBE_PIN, \
+    U_STEP_PIN, U_DIR_PIN, U_ENABLE_PIN, U_MIN_PIN, U_MAX_PIN, \
+	  V_STEP_PIN, V_DIR_PIN, V_ENABLE_PIN, V_MIN_PIN,  V_MAX_PIN, \
     PS_ON_PIN, HEATER_BED_PIN, FAN_PIN, \
-    _E0_PINS _E1_PINS _E2_PINS _E3_PINS \
     analogInputToDigitalPin(TEMP_BED_PIN) \
   }
 
