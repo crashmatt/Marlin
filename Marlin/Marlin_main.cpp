@@ -3199,192 +3199,6 @@ inline void gcode_M503() {
 
 #endif // CUSTOM_M_CODE_SET_Z_PROBE_OFFSET
 
-#if ENABLED(FILAMENTCHANGEENABLE)
-
-  /**
-   * M600: Pause for filament change
-   *
-   *  E[distance] - Retract the filament this far (negative value)
-   *  Z[distance] - Move the Z axis by this distance
-   *  X[position] - Move to this X position, with Y
-   *  Y[position] - Move to this Y position, with X
-   *  L[distance] - Retract distance for removal (manual reload)
-   *
-   *  Default values are used for omitted arguments.
-   *
-   */
-  inline void gcode_M600() {
-
-    if (degHotend(active_extruder) < extrude_min_temp) {
-      SERIAL_ERROR_START;
-      SERIAL_ERRORLNPGM(MSG_TOO_COLD_FOR_M600);
-      return;
-    }
-
-    float lastpos[NUM_AXIS], fr60 = feedrate / 60;
-
-    for (int i = 0; i < NUM_AXIS; i++)
-      lastpos[i] = destination[i] = current_position[i];
-
-    #if ENABLED(DELTA)
-      #define RUNPLAN calculate_delta(destination); \
-                      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], destination[E_AXIS], fr60, active_extruder);
-    #else
-      #define RUNPLAN line_to_destination();
-    #endif
-
-    //retract by E
-    if (code_seen('E')) destination[E_AXIS] += code_value();
-    #ifdef FILAMENTCHANGE_FIRSTRETRACT
-      else destination[E_AXIS] += FILAMENTCHANGE_FIRSTRETRACT;
-    #endif
-
-    RUNPLAN;
-
-    //lift Z
-    if (code_seen('Z')) destination[Z_AXIS] += code_value();
-    #ifdef FILAMENTCHANGE_ZADD
-      else destination[Z_AXIS] += FILAMENTCHANGE_ZADD;
-    #endif
-
-    RUNPLAN;
-
-    //move xy
-    if (code_seen('X')) destination[X_AXIS] = code_value();
-    #ifdef FILAMENTCHANGE_XPOS
-      else destination[X_AXIS] = FILAMENTCHANGE_XPOS;
-    #endif
-
-    if (code_seen('Y')) destination[Y_AXIS] = code_value();
-    #ifdef FILAMENTCHANGE_YPOS
-      else destination[Y_AXIS] = FILAMENTCHANGE_YPOS;
-    #endif
-
-    RUNPLAN;
-
-    if (code_seen('L')) destination[E_AXIS] += code_value();
-    #ifdef FILAMENTCHANGE_FINALRETRACT
-      else destination[E_AXIS] += FILAMENTCHANGE_FINALRETRACT;
-    #endif
-
-    RUNPLAN;
-
-    //finish moves
-    st_synchronize();
-    //disable extruder steppers so filament can be removed
-    disable_e0();
-    disable_e1();
-    disable_e2();
-    disable_e3();
-    delay(100);
-    LCD_ALERTMESSAGEPGM(MSG_FILAMENTCHANGE);
-    millis_t next_tick = 0;
-    while (!lcd_clicked()) {
-      #if DISABLED(AUTO_FILAMENT_CHANGE)
-        millis_t ms = millis();
-        if (ms >= next_tick) {
-          lcd_quick_feedback();
-          next_tick = ms + 2500; // feedback every 2.5s while waiting
-        }
-        manage_heater();
-        manage_inactivity(true);
-        lcd_update();
-      #else
-        current_position[E_AXIS] += AUTO_FILAMENT_CHANGE_LENGTH;
-        destination[E_AXIS] = current_position[E_AXIS];
-        line_to_destination(AUTO_FILAMENT_CHANGE_FEEDRATE);
-        st_synchronize();
-      #endif
-    } // while(!lcd_clicked)
-    lcd_quick_feedback(); // click sound feedback
-
-    #if ENABLED(AUTO_FILAMENT_CHANGE)
-      current_position[E_AXIS] = 0;
-      st_synchronize();
-    #endif
-
-    //return to normal
-    if (code_seen('L')) destination[E_AXIS] -= code_value();
-    #ifdef FILAMENTCHANGE_FINALRETRACT
-      else destination[E_AXIS] -= FILAMENTCHANGE_FINALRETRACT;
-    #endif
-
-    current_position[E_AXIS] = destination[E_AXIS]; //the long retract of L is compensated by manual filament feeding
-    plan_set_e_position(current_position[E_AXIS]);
-
-    RUNPLAN; //should do nothing
-
-    lcd_reset_alert_level();
-
-    #if ENABLED(DELTA)
-      // Move XYZ to starting position, then E
-      calculate_delta(lastpos);
-      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], destination[E_AXIS], fr60, active_extruder);
-      plan_buffer_line(delta[X_AXIS], delta[Y_AXIS], delta[Z_AXIS], lastpos[E_AXIS], fr60, active_extruder);
-    #else
-      // Move XY to starting position, then Z, then E
-      destination[X_AXIS] = lastpos[X_AXIS];
-      destination[Y_AXIS] = lastpos[Y_AXIS];
-      line_to_destination();
-      destination[Z_AXIS] = lastpos[Z_AXIS];
-      line_to_destination();
-      destination[E_AXIS] = lastpos[E_AXIS];
-      line_to_destination();
-    #endif
-
-    #if ENABLED(FILAMENT_RUNOUT_SENSOR)
-      filrunoutEnqueued = false;
-    #endif
-
-  }
-
-#endif // FILAMENTCHANGEENABLE
-
-#if ENABLED(DUAL_X_CARRIAGE)
-
-  /**
-   * M605: Set dual x-carriage movement mode
-   *
-   *    M605 S0: Full control mode. The slicer has full control over x-carriage movement
-   *    M605 S1: Auto-park mode. The inactive head will auto park/unpark without slicer involvement
-   *    M605 S2 [Xnnn] [Rmmm]: Duplication mode. The second extruder will duplicate the first with nnn
-   *                         millimeters x-offset and an optional differential hotend temperature of
-   *                         mmm degrees. E.g., with "M605 S2 X100 R2" the second extruder will duplicate
-   *                         the first with a spacing of 100mm in the x direction and 2 degrees hotter.
-   *
-   *    Note: the X axis should be homed after changing dual x-carriage mode.
-   */
-  inline void gcode_M605() {
-    st_synchronize();
-    if (code_seen('S')) dual_x_carriage_mode = code_value();
-    switch (dual_x_carriage_mode) {
-      case DXC_DUPLICATION_MODE:
-        if (code_seen('X')) duplicate_extruder_x_offset = max(code_value(), X2_MIN_POS - x_home_pos(0));
-        if (code_seen('R')) duplicate_extruder_temp_offset = code_value();
-        SERIAL_ECHO_START;
-        SERIAL_ECHOPGM(MSG_HOTEND_OFFSET);
-        SERIAL_CHAR(' ');
-        SERIAL_ECHO(extruder_offset[X_AXIS][0]);
-        SERIAL_CHAR(',');
-        SERIAL_ECHO(extruder_offset[Y_AXIS][0]);
-        SERIAL_CHAR(' ');
-        SERIAL_ECHO(duplicate_extruder_x_offset);
-        SERIAL_CHAR(',');
-        SERIAL_ECHOLN(extruder_offset[Y_AXIS][1]);
-        break;
-      case DXC_FULL_CONTROL_MODE:
-      case DXC_AUTO_PARK_MODE:
-        break;
-      default:
-        dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
-        break;
-    }
-    active_extruder_parked = false;
-    extruder_duplication_enabled = false;
-    delayed_move_time = 0;
-  }
-
-#endif // DUAL_X_CARRIAGE
 
 /**
  * M907: Set digital trimpot motor current using axis codes X, Y, Z, E, B, S
@@ -4419,25 +4233,17 @@ void mesh_plan_buffer_line(float x, float y, float z, const float e, float feed_
 
 #endif // DUAL_X_CARRIAGE
 
-#if DISABLED(DELTA) && DISABLED(SCARA)
 
-  inline bool prepare_move_cartesian() {
-    // Do not use feedrate_multiplier for E or Z only moves
-    if (current_position[X_AXIS] == destination[X_AXIS] && current_position[Y_AXIS] == destination[Y_AXIS]) {
-      line_to_destination();
-    }
-    else {
-      #if ENABLED(MESH_BED_LEVELING)
-        mesh_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate / 60) * (feedrate_multiplier / 100.0), active_extruder);
-        return false;
-      #else
-        line_to_destination(feedrate * feedrate_multiplier / 100.0);
-      #endif
-    }
-    return true;
-  }
+inline bool prepare_move_cartesian() {
+	#if ENABLED(MESH_BED_LEVELING)
+		mesh_plan_buffer_line(destination[X_AXIS], destination[Y_AXIS], destination[Z_AXIS], destination[E_AXIS], (feedrate / 60) * (feedrate_multiplier / 100.0), active_extruder);
+		return false;
+	#else
+		line_to_destination(feedrate * feedrate_multiplier / 100.0);
+	#endif
+	return true;
+}
 
-#endif // !DELTA && !SCARA
 
 /**
  * Prepare a single move and get ready for the next one
@@ -4449,23 +4255,7 @@ void prepare_move() {
   clamp_to_software_endstops(destination);
   refresh_cmd_timeout();
 
-  #if ENABLED(PREVENT_DANGEROUS_EXTRUDE)
-    prevent_dangerous_extrude(current_position[E_AXIS], destination[E_AXIS]);
-  #endif
-
-  #if ENABLED(SCARA)
-    if (!prepare_move_scara(destination)) return;
-  #elif ENABLED(DELTA)
-    if (!prepare_move_delta(destination)) return;
-  #endif
-
-  #if ENABLED(DUAL_X_CARRIAGE)
-    if (!prepare_move_dual_x_carriage()) return;
-  #endif
-
-  #if DISABLED(DELTA) && DISABLED(SCARA)
-    if (!prepare_move_cartesian()) return;
-  #endif
+  if (!prepare_move_cartesian()) return;
 
   set_current_to_destination();
 }
