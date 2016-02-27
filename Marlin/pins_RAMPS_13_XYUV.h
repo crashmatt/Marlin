@@ -51,7 +51,7 @@
 
 #define U_STEP_PIN         46
 #define U_DIR_PIN          48
-#define U_ENABLE_PIN       56
+#define U_ENABLE_PIN       62
 #define U_MIN_PIN          18
 #define U_MAX_PIN          -1
 
@@ -62,9 +62,9 @@
 #define V_MAX_PIN          19
 
 // Rotation table
-#define R_STEP_PIN        36
-#define R_DIR_PIN         34
-#define R_ENABLE_PIN      30
+#define R_STEP_PIN         36
+#define R_DIR_PIN          34
+#define R_ENABLE_PIN       30
 
 #define SDPOWER            -1
 #define SDSS               53
