@@ -483,8 +483,8 @@ float junction_deviation = 0.1;
   long target[NUM_AXIS];
   target[X_AXIS] = lround(x * axis_steps_per_unit[X_AXIS]);
   target[Y_AXIS] = lround(y * axis_steps_per_unit[Y_AXIS]);
-  target[U_AXIS] = lround(y * axis_steps_per_unit[U_AXIS]);
-  target[V_AXIS] = lround(y * axis_steps_per_unit[V_AXIS]);
+  target[U_AXIS] = lround(u * axis_steps_per_unit[U_AXIS]);
+  target[V_AXIS] = lround(v * axis_steps_per_unit[V_AXIS]);
 
   float dx = target[X_AXIS] - position[X_AXIS],
         dy = target[Y_AXIS] - position[Y_AXIS],
