@@ -4505,6 +4505,12 @@ void manage_inactivity(bool ignore_stepper_queue/*=false*/) {
     #if DISABLE_Y == true
       disable_y();
     #endif
+		#if DISABLE_U == true
+			disable_u();
+		#endif
+		#if DISABLE_V == true
+			disable_v();
+		#endif
   }
 
   #ifdef CHDK // Check if pin should be set to LOW after M240 set it to HIGH
