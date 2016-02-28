@@ -1205,10 +1205,8 @@ static void homeaxis(AxisEnum axis) {
   							axis == V_AXIS ? HOMEAXIS_DO(V) : 0) {
 
     int axis_home_dir =
-      #if ENABLED(DUAL_X_CARRIAGE)
-        (axis == X_AXIS) ? x_home_dir(active_extruder) :
-      #endif
-      home_dir(axis);
+
+		home_dir(axis);
 
     // Set the axis position as setup for the move
     current_position[axis] = 0;
@@ -1470,21 +1468,7 @@ inline void gcode_G28() {
 
     // Home X
     if (home_all_axis || homeX) {
-      #if ENABLED(DUAL_X_CARRIAGE)
-        int tmp_extruder = active_extruder;
-        extruder_duplication_enabled = false;
-        active_extruder = !active_extruder;
-        HOMEAXIS(X);
-        inactive_extruder_x_pos = current_position[X_AXIS];
-        active_extruder = tmp_extruder;
-        HOMEAXIS(X);
-        // reset state used by the different modes
-        memcpy(raised_parked_position, current_position, sizeof(raised_parked_position));
-        delayed_move_time = 0;
-        active_extruder_parked = true;
-      #else
-        HOMEAXIS(X);
-      #endif
+    	HOMEAXIS(X);
       #if ENABLED(DEBUG_LEVELING_FEATURE)
         if (marlin_debug_flags & DEBUG_LEVELING) {
           print_xyz("> homeX", current_position);
@@ -1503,6 +1487,26 @@ inline void gcode_G28() {
         #endif
       }
     #endif
+
+		// Home U
+		if (home_all_axis || homeU) {
+			HOMEAXIS(U);
+			#if ENABLED(DEBUG_LEVELING_FEATURE)
+				if (marlin_debug_flags & DEBUG_LEVELING) {
+					print_xyz("> homeU", current_position);
+				}
+			#endif
+		}
+
+		// Home V
+		if (home_all_axis || homeV) {
+		HOMEAXIS(V);
+		#if ENABLED(DEBUG_LEVELING_FEATURE)
+			if (marlin_debug_flags & DEBUG_LEVELING) {
+				print_xyz("> homeV", current_position);
+			}
+		#endif
+		}
 
     sync_plan_position();
 
