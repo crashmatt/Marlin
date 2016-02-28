@@ -56,7 +56,7 @@ static unsigned int cleaning_buffer_counter;
 #endif
 
 // Counter variables for the Bresenham line tracer
-static long counter_x, counter_y, counter_z, counter_e;
+static long counter_x, counter_y, counter_u, counter_v;
 volatile static unsigned long step_events_completed; // The number of step events executed in the current block
 
 #if ENABLED(ADVANCE)
@@ -528,7 +528,7 @@ ISR(TIMER1_COMPA_vect) {
       current_block->busy = true;
       trapezoid_generator_reset();
       counter_x = -(current_block->step_event_count >> 1);
-      counter_y = counter_z = counter_e = counter_x;
+      counter_y = counter_u = counter_v;
       step_events_completed = 0;
 
     }
@@ -558,6 +558,8 @@ ISR(TIMER1_COMPA_vect) {
 
       STEP_ADD(x,X);
       STEP_ADD(y,Y);
+      STEP_ADD(u,U);
+      STEP_ADD(v,V);
 
       #define STEP_IF_COUNTER(axis, AXIS) \
         if (_COUNTER(axis) > 0) { \
@@ -568,6 +570,8 @@ ISR(TIMER1_COMPA_vect) {
 
       STEP_IF_COUNTER(x, X);
       STEP_IF_COUNTER(y, Y);
+      STEP_IF_COUNTER(u, U);
+      STEP_IF_COUNTER(v, V);
 
       step_events_completed++;
       if (step_events_completed >= current_block->step_event_count) break;

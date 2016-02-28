@@ -2449,11 +2449,6 @@ inline void gcode_M204() {
     SERIAL_ECHOPAIR("Setting Print Acceleration: ", acceleration);
     SERIAL_EOL;
   }
-  if (code_seen('R')) {
-    retract_acceleration = code_value();
-    SERIAL_ECHOPAIR("Setting Retract Acceleration: ", retract_acceleration);
-    SERIAL_EOL;
-  }
   if (code_seen('T')) {
     travel_acceleration = code_value();
     SERIAL_ECHOPAIR("Setting Travel Acceleration: ", travel_acceleration);
