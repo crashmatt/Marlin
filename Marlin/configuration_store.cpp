@@ -133,6 +133,8 @@ void _EEPROM_readData(int &pos, uint8_t* value, uint8_t size) {
 
 #if ENABLED(EEPROM_SETTINGS)
 
+#error SHOULD NOT BE HERE- UNSUPPORTED
+
 void Config_StoreSettings()  {
   float dummy = 0.0f;
   char ver[4] = "000";
@@ -297,7 +299,7 @@ void Config_StoreSettings()  {
  */
 
 void Config_RetrieveSettings() {
-
+	#error NOT SUPPORTED
   int i = EEPROM_OFFSET;
   char stored_ver[4];
   char ver[4] = EEPROM_VERSION;
@@ -495,14 +497,13 @@ void Config_ResetDefault() {
   reset_acceleration_rates();
 
   acceleration = DEFAULT_ACCELERATION;
-  retract_acceleration = DEFAULT_RETRACT_ACCELERATION;
   travel_acceleration = DEFAULT_TRAVEL_ACCELERATION;
   minimumfeedrate = DEFAULT_MINIMUMFEEDRATE;
   minsegmenttime = DEFAULT_MINSEGMENTTIME;
   mintravelfeedrate = DEFAULT_MINTRAVELFEEDRATE;
   max_xy_jerk = DEFAULT_XYJERK;
-  max_z_jerk = DEFAULT_ZJERK;
-  max_e_jerk = DEFAULT_EJERK;
+//  max_z_jerk = DEFAULT_ZJERK;
+//  max_e_jerk = DEFAULT_EJERK;
   home_offset[X_AXIS] = home_offset[Y_AXIS] =
   		home_offset[U_AXIS] = home_offset[V_AXIS] = 0;
 
@@ -514,15 +515,6 @@ void Config_ResetDefault() {
     zprobe_zoffset = Z_PROBE_OFFSET_FROM_EXTRUDER;
   #endif
 
-  #if ENABLED(DELTA)
-    endstop_adj[X_AXIS] = endstop_adj[Y_AXIS] = endstop_adj[U_AXIS] = endstop_adj[V_AXIS] = 0;
-    delta_radius =  DELTA_RADIUS;
-    delta_diagonal_rod =  DELTA_DIAGONAL_ROD;
-    delta_segments_per_second =  DELTA_SEGMENTS_PER_SECOND;
-    recalc_delta_settings(delta_radius, delta_diagonal_rod);
-  #elif ENABLED(Z_DUAL_ENDSTOPS)
-    z_endstop_adj = 0;
-  #endif
 
   #if ENABLED(ULTIPANEL)
     plaPreheatHotendTemp = PLA_PREHEAT_HOTEND_TEMP;
@@ -564,20 +556,6 @@ void Config_ResetDefault() {
     bedKd = scalePID_d(DEFAULT_bedKd);
   #endif
 
-  #if ENABLED(FWRETRACT)
-    autoretract_enabled = false;
-    retract_length = RETRACT_LENGTH;
-    #if EXTRUDERS > 1
-      retract_length_swap = RETRACT_LENGTH_SWAP;
-    #endif
-    retract_feedrate = RETRACT_FEEDRATE;
-    retract_zlift = RETRACT_ZLIFT;
-    retract_recover_length = RETRACT_RECOVER_LENGTH;
-    #if EXTRUDERS > 1
-      retract_recover_length_swap = RETRACT_RECOVER_LENGTH_SWAP;
-    #endif
-    retract_recover_feedrate = RETRACT_RECOVER_FEEDRATE;
-  #endif
 
   volumetric_enabled = false;
   for (uint8_t q = 0; q < COUNT(filament_size); q++)
@@ -652,7 +630,6 @@ void Config_PrintSettings(bool forReplay) {
     CONFIG_ECHO_START;
   }
   SERIAL_ECHOPAIR("  M204 P", acceleration);
-  SERIAL_ECHOPAIR(" R", retract_acceleration);
   SERIAL_ECHOPAIR(" T", travel_acceleration);
   SERIAL_EOL;
 
@@ -698,24 +675,7 @@ void Config_PrintSettings(bool forReplay) {
     }
   #endif
 
-  #if ENABLED(DELTA)
-    CONFIG_ECHO_START;
-    if (!forReplay) {
-      SERIAL_ECHOLNPGM("Endstop adjustment (mm):");
-      CONFIG_ECHO_START;
-    }
-    SERIAL_ECHOPAIR("  M666 X", endstop_adj[X_AXIS]);
-    SERIAL_ECHOPAIR(" Y", endstop_adj[Y_AXIS]);
-    SERIAL_ECHOPAIR(" Z", endstop_adj[Z_AXIS]);
-    SERIAL_EOL;
-    CONFIG_ECHO_START;
-    SERIAL_ECHOLNPGM("Delta settings: L=delta_diagonal_rod, R=delta_radius, S=delta_segments_per_second");
-    CONFIG_ECHO_START;
-    SERIAL_ECHOPAIR("  M665 L", delta_diagonal_rod);
-    SERIAL_ECHOPAIR(" R", delta_radius);
-    SERIAL_ECHOPAIR(" S", delta_segments_per_second);
-    SERIAL_EOL;
-  #elif ENABLED(Z_DUAL_ENDSTOPS)
+	#if ENABLED(Z_DUAL_ENDSTOPS)
     CONFIG_ECHO_START;
     if (!forReplay) {
       SERIAL_ECHOLNPGM("Z2 Endstop adjustment (mm):");
@@ -723,7 +683,7 @@ void Config_PrintSettings(bool forReplay) {
     }
     SERIAL_ECHOPAIR("  M666 Z", z_endstop_adj);
     SERIAL_EOL;
-  #endif // DELTA
+  #endif // ENABLED(Z_DUAL_ENDSTOPS)
 
   #if ENABLED(ULTIPANEL)
     CONFIG_ECHO_START;
@@ -799,41 +759,6 @@ void Config_PrintSettings(bool forReplay) {
     SERIAL_ECHOPAIR("  M250 C", (unsigned long)lcd_contrast);
     SERIAL_EOL;
   #endif
-
-  #if ENABLED(FWRETRACT)
-
-    CONFIG_ECHO_START;
-    if (!forReplay) {
-      SERIAL_ECHOLNPGM("Retract: S=Length (mm) F:Speed (mm/m) Z: ZLift (mm)");
-      CONFIG_ECHO_START;
-    }
-    SERIAL_ECHOPAIR("  M207 S", retract_length);
-    #if EXTRUDERS > 1
-      SERIAL_ECHOPAIR(" W", retract_length_swap);
-    #endif
-    SERIAL_ECHOPAIR(" F", retract_feedrate * 60);
-    SERIAL_ECHOPAIR(" Z", retract_zlift);
-    SERIAL_EOL;
-    CONFIG_ECHO_START;
-    if (!forReplay) {
-      SERIAL_ECHOLNPGM("Recover: S=Extra length (mm) F:Speed (mm/m)");
-      CONFIG_ECHO_START;
-    }
-    SERIAL_ECHOPAIR("  M208 S", retract_recover_length);
-    #if EXTRUDERS > 1
-      SERIAL_ECHOPAIR(" W", retract_recover_length_swap);
-    #endif
-    SERIAL_ECHOPAIR(" F", retract_recover_feedrate * 60);
-    SERIAL_EOL;
-    CONFIG_ECHO_START;
-    if (!forReplay) {
-      SERIAL_ECHOLNPGM("Auto-Retract: S=0 to disable, 1 to interpret extrude-only moves as retracts or recoveries");
-      CONFIG_ECHO_START;
-    }
-    SERIAL_ECHOPAIR("  M209 S", (unsigned long)(autoretract_enabled ? 1 : 0));
-    SERIAL_EOL;
-
-  #endif // FWRETRACT
 
   /**
    * Volumetric extrusion M200

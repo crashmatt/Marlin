@@ -69,11 +69,11 @@ float axis_steps_per_unit[NUM_AXIS];
 unsigned long max_acceleration_units_per_sq_second[NUM_AXIS]; // Use M201 to override by software
 float minimumfeedrate;
 float acceleration;         // Normal acceleration mm/s^2  DEFAULT ACCELERATION for all printing moves. M204 SXXXX
-float retract_acceleration; // Retract acceleration mm/s^2 filament pull-back and push-forward while standing still in the other axes M204 TXXXX
+//float retract_acceleration; // Retract acceleration mm/s^2 filament pull-back and push-forward while standing still in the other axes M204 TXXXX
 float travel_acceleration;  // Travel acceleration mm/s^2  DEFAULT ACCELERATION for all NON printing moves. M204 MXXXX
 float max_xy_jerk;          // The largest speed change requiring no acceleration
-float max_z_jerk;
-float max_e_jerk;
+//float max_z_jerk;
+//float max_e_jerk;
 float mintravelfeedrate;
 unsigned long axis_steps_per_sqr_second[NUM_AXIS];
 
@@ -359,6 +359,7 @@ void plan_init() {
 
 
 #if ENABLED(AUTOTEMP)
+	#error SHOULD NOT BE HERE
   void getHighESpeed() {
     static float oldt = 0;
 
