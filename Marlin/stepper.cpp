@@ -102,8 +102,8 @@ volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
 //===========================================================================
 
 
-  #define X_APPLY_DIR(v,Q) X_DIR_WRITE(v)
-  #define X_APPLY_STEP(v,Q) X_STEP_WRITE(v)
+#define X_APPLY_DIR(v,Q) X_DIR_WRITE(v)
+#define X_APPLY_STEP(v,Q) X_STEP_WRITE(v)
 
 
 #if ENABLED(Y_DUAL_STEPPER_DRIVERS)
@@ -326,7 +326,7 @@ inline void update_endstops() {
 
 
 #if ENABLED(COREXY)
-  // Head direction in -X axis for CoreXY bots.
+  // Head direction in -U axis for CoreXY bots.
   // If DeltaX == -DeltaY, the movement is only in Y axis
   if ((current_block->steps[C_AXIS] != current_block->steps[D_AXIS]) || (TEST(out_bits, C_AXIS) == TEST(out_bits, D_AXIS))) {
     if (TEST(out_bits, U_HEAD))
@@ -348,7 +348,7 @@ inline void update_endstops() {
 #endif
 
 #if ENABLED(COREXY)
-  // Head direction in -Y axis for CoreXY bots.
+  // Head direction in -V axis for CoreXY bots.
   // If DeltaX == DeltaY, the movement is only in X axis
   if ((current_block->steps[C_AXIS] != current_block->steps[D_AXIS]) || (TEST(out_bits, C_AXIS) != TEST(out_bits, D_AXIS))) {
     if (TEST(out_bits, V_HEAD))
