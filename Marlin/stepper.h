@@ -79,6 +79,8 @@ void endstops_hit_on_purpose(); //avoid creation of the message, i.e. after homi
 
 void enable_endstops(bool check); // Enable/disable endstop checking
 
+char get_endstop_hit_bits(void);	//Get the endstop hit bits
+
 void checkStepperErrors(); //Print errors detected by the stepper
 
 void finishAndDisableSteppers();

@@ -1017,38 +1017,6 @@ XYZ_CONSTS_FROM_CONFIG(float, max_length,     MAX_LENGTH);
 XYZ_CONSTS_FROM_CONFIG(float, home_bump_mm,   HOME_BUMP_MM);
 XYZ_CONSTS_FROM_CONFIG(signed char, home_dir, HOME_DIR);
 
-#if ENABLED(DUAL_X_CARRIAGE)
-
-  #define DXC_FULL_CONTROL_MODE 0
-  #define DXC_AUTO_PARK_MODE    1
-  #define DXC_DUPLICATION_MODE  2
-
-  static int dual_x_carriage_mode = DEFAULT_DUAL_X_CARRIAGE_MODE;
-
-  static float x_home_pos(int extruder) {
-    if (extruder == 0)
-      return base_home_pos(X_AXIS) + home_offset[X_AXIS];
-    else
-      // In dual carriage mode the extruder offset provides an override of the
-      // second X-carriage offset when homed - otherwise X2_HOME_POS is used.
-      // This allow soft recalibration of the second extruder offset position without firmware reflash
-      // (through the M218 command).
-      return (extruder_offset[X_AXIS][1] > 0) ? extruder_offset[X_AXIS][1] : X2_HOME_POS;
-  }
-
-  static int x_home_dir(int extruder) {
-    return (extruder == 0) ? X_HOME_DIR : X2_HOME_DIR;
-  }
-
-  static float inactive_extruder_x_pos = X2_MAX_POS; // used in mode 0 & 1
-  static bool active_extruder_parked = false; // used in mode 1 & 2
-  static float raised_parked_position[NUM_AXIS]; // used in mode 1
-  static millis_t delayed_move_time = 0; // used in mode 1
-  static float duplicate_extruder_x_offset = DEFAULT_DUPLICATION_X_OFFSET; // used in mode 2
-  static float duplicate_extruder_temp_offset = 0; // used in mode 2
-  bool extruder_duplication_enabled = false; // used in mode 2
-
-#endif //DUAL_X_CARRIAGE
 
 #if ENABLED(DEBUG_LEVELING_FEATURE)
   void print_xyz(const char* prefix, const float x, const float y, const float z) {
@@ -1065,23 +1033,6 @@ XYZ_CONSTS_FROM_CONFIG(signed char, home_dir, HOME_DIR);
 
 static void set_axis_is_at_home(AxisEnum axis) {
 
-  #if ENABLED(DUAL_X_CARRIAGE)
-    if (axis == X_AXIS) {
-      if (active_extruder != 0) {
-        current_position[X_AXIS] = x_home_pos(active_extruder);
-                 min_pos[X_AXIS] = X2_MIN_POS;
-                 max_pos[X_AXIS] = max(extruder_offset[X_AXIS][1], X2_MAX_POS);
-        return;
-      }
-      else if (dual_x_carriage_mode == DXC_DUPLICATION_MODE) {
-        float xoff = home_offset[X_AXIS];
-        current_position[X_AXIS] = base_home_pos(X_AXIS) + xoff;
-                 min_pos[X_AXIS] = base_min_pos(X_AXIS) + xoff;
-                 max_pos[X_AXIS] = min(base_max_pos(X_AXIS) + xoff, max(extruder_offset[X_AXIS][1], X2_MAX_POS) - duplicate_extruder_x_offset);
-        return;
-      }
-    }
-  #endif
 
   #if ENABLED(SCARA)
 
@@ -1181,6 +1132,132 @@ static void setup_for_endstop_move() {
 }
 
 
+static void home_multi_axis(uint8_t home_axis) {
+	uint8_t axis_done = 0;
+	bool axis_hit;
+	bool axis_todo;
+	int  axis;
+	char endstop_hit_bits;
+
+	#if ENABLED(DEBUG_LEVELING_FEATURE)
+		if (marlin_debug_flags & DEBUG_LEVELING) {
+			SERIAL_ECHOPAIR(">>> home_mult_axis(", (unsigned long)home_axis);
+			SERIAL_CHAR(')');
+			SERIAL_EOL;
+		}
+	#endif
+
+	#if ENABLED(DEBUG_LEVELING_FEATURE)
+		if (marlin_debug_flags & DEBUG_LEVELING) {
+			SERIAL_ECHOLNPGM("> enable_endstops(true)");
+		}
+	#endif
+	enable_endstops(true); // Enable endstops for next homing move
+
+	// Loops around enough times to approximate home all axis
+	do {
+		// Check if each axis is done on each loop
+		axis_todo = false;
+		feedrate = homing_feedrate[0];
+
+		// Set all active axis position to zero as setup for the move
+		for(int axis=0; axis<NUM_AXIS; axis++){
+			if(home_axis & BIT(axis)){
+					current_position[axis] = 0;
+					destination[axis] = 0;
+			}
+		}
+
+		sync_plan_position();
+
+		for(axis=0; axis<NUM_AXIS; axis++){
+			// If axis is done then don't move it
+			if(!(axis_done & BIT(axis))){
+				if(home_axis & BIT(axis)){
+					axis_todo = true;
+					destination[axis] = 1.5 * max_length(axis) * home_dir(axis);
+				}
+			}
+		}
+
+
+		if(axis_todo == true){
+			line_to_destination();
+			st_synchronize();
+
+			// Endstop hit - Set position and destination of all active axis to zero
+			for(axis=0; axis<NUM_AXIS; axis++){
+				if(home_axis & BIT(axis)){
+					current_position[axis] = 0;
+					destination[axis] = 0;
+				}
+			}
+
+			sync_plan_position();
+
+			char endstop_hit_bits = get_endstop_hit_bits();
+			// Set the axis position as setup for the move
+			if(endstop_hit_bits & (BIT(X_MIN)|BIT(X_MAX)) ){
+				destination[X_AXIS] = -home_bump_mm(X_AXIS) * home_dir(X_AXIS);
+				axis_done |= BIT(X_AXIS);
+			}
+			if(endstop_hit_bits & (BIT(Y_MIN)|BIT(Y_MAX))){
+				destination[Y_AXIS] = -home_bump_mm(Y_AXIS) * home_dir(Y_AXIS);
+				axis_done |= BIT(Y_AXIS);
+			}
+			if(endstop_hit_bits & (BIT(U_MIN)|BIT(U_MAX))){
+				destination[U_AXIS] = -home_bump_mm(U_AXIS) * home_dir(U_AXIS);
+				axis_done |= BIT(U_AXIS);
+			}
+			if(endstop_hit_bits & (BIT(V_MIN)|BIT(V_MAX))){
+				destination[V_AXIS] = -home_bump_mm(V_AXIS) * home_dir(V_AXIS);
+				axis_done |= BIT(V_AXIS);
+			}
+
+	    // Slow down the feedrate for the next move
+	    set_homing_bump_feedrate(X_AXIS);
+
+			#if ENABLED(DEBUG_LEVELING_FEATURE)
+				if (marlin_debug_flags & DEBUG_LEVELING) {
+					SERIAL_ECHOLNPGM("> enable_endstops(false)");
+				}
+			#endif
+	    enable_endstops(false); // Disable endstops while moving away
+
+	    line_to_destination();
+	    st_synchronize();
+
+			endstops_hit_on_purpose();	// Clear the endstop flags
+
+	    #if ENABLED(DEBUG_LEVELING_FEATURE)
+	      if (marlin_debug_flags & DEBUG_LEVELING) {
+	        SERIAL_ECHOLNPGM("> enable_endstops(true)");
+	      }
+	    #endif
+	    enable_endstops(true); // Enable endstops for next homing move
+
+		}
+	} while (axis_todo == true);
+
+//	//Slow final homing of each axis individually
+//	for(axis=0; axis<NUM_AXIS; axis++){
+//		// Only do required axis
+//		if(home_axis & BIT(axis)){
+//			destination[axis] = 1.5 * max_length(axis) * home_dir(axis);
+//
+//		}
+//	}
+		feedrate = homing_feedrate[X_AXIS];
+
+		// Set all active axis position to zero to finish
+		for(int axis=0; axis<NUM_AXIS; axis++){
+			if(home_axis & BIT(axis)){
+					current_position[axis] = 0;
+					destination[axis] = 0;
+			}
+		}
+}
+
 
 /**
  * Home an individual axis
@@ -1204,9 +1281,7 @@ static void homeaxis(AxisEnum axis) {
   					axis == U_AXIS ? HOMEAXIS_DO(U) :
   							axis == V_AXIS ? HOMEAXIS_DO(V) : 0) {
 
-    int axis_home_dir =
-
-		home_dir(axis);
+    int axis_home_dir = home_dir(axis);
 
     // Set the axis position as setup for the move
     current_position[axis] = 0;
@@ -1419,6 +1494,8 @@ inline void gcode_G4() {
  *  X   Home to the X endstop
  *  Y   Home to the Y endstop
  *  Z   Home to the Z endstop
+ *  S 	Home XYUV vertical and horizontal axis separately
+ *  M 	Home XYUV vertical and horizontal axis together
  *
  */
 inline void gcode_G28() {
@@ -1431,6 +1508,29 @@ inline void gcode_G28() {
 
   // Wait for planner moves to finish!
   st_synchronize();
+
+  if(code_seen('M')){
+    setup_for_endstop_move();
+    set_destination_to_current();
+		home_multi_axis(BIT(X_AXIS) | BIT(Y_AXIS) | BIT(U_AXIS) | BIT(V_AXIS));
+  }
+
+  if(code_seen('S')){
+    setup_for_endstop_move();
+    set_destination_to_current();
+
+		#if ENABLED(HOME_Y_BEFORE_X)
+		home_multi_axis(BIT(Y_AXIS) | BIT(V_AXIS));
+		#endif
+
+		home_multi_axis(BIT(X_AXIS) | BIT(U_AXIS));
+
+		#if DISABLED(HOME_Y_BEFORE_X)
+  		home_multi_axis(BIT(Y_AXIS) | BIT(V_AXIS));
+		#endif
+
+		return;
+  };
 
   // For auto bed leveling, clear the level matrix
   #if ENABLED(AUTO_BED_LEVELING_FEATURE)
@@ -1452,63 +1552,61 @@ inline void gcode_G28() {
 
   feedrate = 0.0;
 
-// NOT DELTA
+	bool  homeX = code_seen(axis_codes[X_AXIS]),
+				homeY = code_seen(axis_codes[Y_AXIS]),
+				homeU = code_seen(axis_codes[U_AXIS]),
+				homeV = code_seen(axis_codes[V_AXIS]);
 
-    bool  homeX = code_seen(axis_codes[X_AXIS]),
-          homeY = code_seen(axis_codes[Y_AXIS]),
-          homeU = code_seen(axis_codes[U_AXIS]),
-					homeV = code_seen(axis_codes[V_AXIS]);
+	home_all_axis = (!homeX && !homeY && !homeU && !homeV) || (homeX && homeY && homeU && homeV);
 
-    home_all_axis = (!homeX && !homeY && !homeU && !homeV) || (homeX && homeY && homeU && homeV);
+	#if ENABLED(HOME_Y_BEFORE_X)
+		// Home Y
+		if (home_all_axis || homeY) HOMEAXIS(Y);
+	#endif
 
-    #if ENABLED(HOME_Y_BEFORE_X)
-      // Home Y
-      if (home_all_axis || homeY) HOMEAXIS(Y);
-    #endif
+	// Home X
+	if (home_all_axis || homeX) {
+		HOMEAXIS(X);
+		#if ENABLED(DEBUG_LEVELING_FEATURE)
+			if (marlin_debug_flags & DEBUG_LEVELING) {
+				print_xyz("> homeX", current_position);
+			}
+		#endif
+	}
 
-    // Home X
-    if (home_all_axis || homeX) {
-    	HOMEAXIS(X);
-      #if ENABLED(DEBUG_LEVELING_FEATURE)
-        if (marlin_debug_flags & DEBUG_LEVELING) {
-          print_xyz("> homeX", current_position);
-        }
-      #endif
-    }
-
-    #if DISABLED(HOME_Y_BEFORE_X)
-      // Home Y
-      if (home_all_axis || homeY) {
-        HOMEAXIS(Y);
-        #if ENABLED(DEBUG_LEVELING_FEATURE)
-          if (marlin_debug_flags & DEBUG_LEVELING) {
-            print_xyz("> homeY", current_position);
-          }
-        #endif
-      }
-    #endif
-
-		// Home U
-		if (home_all_axis || homeU) {
-			HOMEAXIS(U);
+	#if DISABLED(HOME_Y_BEFORE_X)
+		// Home Y
+		if (home_all_axis || homeY) {
+			HOMEAXIS(Y);
 			#if ENABLED(DEBUG_LEVELING_FEATURE)
 				if (marlin_debug_flags & DEBUG_LEVELING) {
-					print_xyz("> homeU", current_position);
+					print_xyz("> homeY", current_position);
 				}
 			#endif
 		}
+	#endif
 
-		// Home V
-		if (home_all_axis || homeV) {
-		HOMEAXIS(V);
+	// Home U
+	if (home_all_axis || homeU) {
+		HOMEAXIS(U);
 		#if ENABLED(DEBUG_LEVELING_FEATURE)
 			if (marlin_debug_flags & DEBUG_LEVELING) {
-				print_xyz("> homeV", current_position);
+				print_xyz("> homeU", current_position);
 			}
 		#endif
-		}
+	}
 
-    sync_plan_position();
+	// Home V
+	if (home_all_axis || homeV) {
+	HOMEAXIS(V);
+	#if ENABLED(DEBUG_LEVELING_FEATURE)
+		if (marlin_debug_flags & DEBUG_LEVELING) {
+			print_xyz("> homeV", current_position);
+		}
+	#endif
+	}
+
+	sync_plan_position();
 
 
   #if ENABLED(ENDSTOPS_ONLY_FOR_HOMING)

@@ -206,6 +206,8 @@ volatile signed char count_direction[NUM_AXIS] = { 1, 1, 1, 1 };
 #define ENABLE_STEPPER_DRIVER_INTERRUPT()  TIMSK1 |= BIT(OCIE1A)
 #define DISABLE_STEPPER_DRIVER_INTERRUPT() TIMSK1 &= ~BIT(OCIE1A)
 
+char get_endstop_hit_bits(void) {return endstop_hit_bits;};
+
 void endstops_hit_on_purpose() {
   endstop_hit_bits = 0;
 }
@@ -368,9 +370,6 @@ inline void update_endstops() {
 #if ENABLED(COREXY)
   }
 #endif
-
-
-
 
   old_endstop_bits = current_endstop_bits;
 }
